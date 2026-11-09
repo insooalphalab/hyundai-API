@@ -1,0 +1,538 @@
+<title>시트룸</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F1F4F6; --surface:#FFFFFF; --ink:#15202B; --muted:#5A6774; --line:#D3DBE2; --soft:#E6EBEF;
+  --cool:#1D8CB0; --warm:#CF8233; --night:#2F3B68; --night-ink:#FFFFFF;
+  --ok:#2C8A57; --warn:#B98410; --no:#B3474A;
+  --car:#FAFBFC; --car-stroke:#9AA7B3;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E141A; --surface:#161F28; --ink:#E5EBF0; --muted:#94A2AF; --line:#2B3744; --soft:#1E2934;
+    --cool:#4CB5D5; --warm:#E3A05B; --night:#8796D4; --night-ink:#0E141A;
+    --ok:#4DBA80; --warn:#E2B142; --no:#E27578;
+    --car:#1B2530; --car-stroke:#5E6D7B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E141A; --surface:#161F28; --ink:#E5EBF0; --muted:#94A2AF; --line:#2B3744; --soft:#1E2934;
+  --cool:#4CB5D5; --warm:#E3A05B; --night:#8796D4; --night-ink:#0E141A;
+  --ok:#4DBA80; --warn:#E2B142; --no:#E27578;
+  --car:#1B2530; --car-stroke:#5E6D7B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.6;padding-inline:16px;padding-block:32px 64px}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+header h1{font-size:30px;line-height:1.25;margin:0 0 8px;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted);max-width:62ch}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.no{background:var(--no)}
+section{display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h2{font-size:22px;margin:0;font-weight:600;text-wrap:balance}
+.lead{margin:0;color:var(--muted);max-width:62ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.scroll{overflow-x:auto}
+.scroll svg{display:block;min-width:720px;width:100%;height:auto}
+svg text{font-family:"IBM Plex Sans KR","Malgun Gothic",sans-serif;fill:var(--ink)}
+.t-sub{fill:var(--muted);font-size:12px}
+.t-main{font-size:14px;font-weight:600}
+.t-axis{fill:var(--muted);font-size:12px;font-family:"IBM Plex Mono",monospace}
+.f-ok{fill:var(--ok)}.f-warn{fill:var(--warn)}.f-no{fill:var(--no)}
+.s-ok{stroke:var(--ok)}.s-warn{stroke:var(--warn)}.s-no{stroke:var(--no)}
+.car{fill:var(--car);stroke:var(--car-stroke);stroke-width:2}
+.seat{fill:var(--soft);stroke:var(--car-stroke);stroke-width:1.5}
+.glow-cool{fill:var(--cool);opacity:.18}
+.glow-warm{fill:var(--warm);opacity:.22}
+.leader{fill:none;stroke:var(--car-stroke);stroke-width:1.2}
+.thin{fill:none;stroke:var(--car-stroke);stroke-width:1.5}
+.door{stroke:var(--ink);stroke-width:4;stroke-linecap:round}
+.hint{font-size:13px;color:var(--muted);margin:0}
+/* flow */
+.node rect{fill:var(--surface);stroke:var(--line);stroke-width:1.2}
+.node{cursor:pointer}
+.node:focus{outline:none}
+.node:focus-visible rect,.node.on rect{stroke:var(--ink);stroke-width:2}
+.node text{font-size:13px}
+.link{fill:none;stroke-width:1.6;opacity:.32;transition:opacity .15s}
+.focus .link{opacity:.05}
+.focus .link.on{opacity:.95;stroke-width:2.2}
+.focus .node{opacity:.35}
+.focus .node.lit{opacity:1}
+/* board */
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.col{display:flex;flex-direction:column;gap:10px}
+.col h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.col.ok h3{border-color:var(--ok)}.col.warn h3{border-color:var(--warn)}.col.no h3{border-color:var(--no)}
+.col h3 small{font-weight:400;color:var(--muted);font-size:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.card b{font-size:14px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:11.5px;padding:2px 7px;border-radius:999px;background:var(--soft);color:var(--ink);white-space:nowrap}
+.block{font-size:12.5px;color:var(--muted);line-height:1.45}
+.block::before{content:"막힘 · ";color:var(--ink);font-weight:500}
+/* roadmap */
+.road{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;position:relative}
+.stage{padding:16px;border-top:4px solid var(--line);display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.stage+.stage{border-left:1px dashed var(--line)}
+.stage.ok{border-top-color:var(--ok)}.stage.warn{border-top-color:var(--warn)}.stage.no{border-top-color:var(--no)}
+.stage h3{margin:0;font-size:15px}
+.stage p{margin:0;font-size:13px;color:var(--muted)}
+.roadwrap{border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding-left:12px;margin:0}
+/* comic */
+.comic{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.comic figure{margin:0;display:flex;flex-direction:column;gap:10px}
+.comic img{display:block;width:100%;aspect-ratio:600/466;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:var(--soft)}
+.comic figcaption{display:flex;flex-direction:column;gap:2px}
+.comic b{font-size:15px;font-weight:600}
+.comic span{font-size:13.5px;color:var(--muted);line-height:1.55}
+.story-text{display:flex;flex-direction:column;gap:6px}
+.story-text b{font-size:15px}
+.story-text p{margin:0;color:var(--muted);max-width:44ch}
+.story-text em{font-style:normal;font-weight:600}
+.story-text em.c{color:var(--cool)}.story-text em.w{color:var(--warm)}
+/* brand */
+.brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px;margin:6px 0 12px}
+.brand .mark{font-size:46px;font-weight:700;letter-spacing:-.03em;line-height:1.05}
+.brand .tag{font-size:19px;color:var(--muted);font-weight:500}
+/* rooms */
+.rooms{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:34px 18px 18px;border:2px solid var(--car-stroke);border-radius:64px 64px 36px 36px;background:var(--car)}
+.front{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--muted)}
+.room{border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.room.study{background:color-mix(in srgb,var(--cool) 11%,var(--surface));border-color:color-mix(in srgb,var(--cool) 40%,var(--line))}
+.room.bed{background:color-mix(in srgb,var(--warm) 12%,var(--surface));border-color:color-mix(in srgb,var(--warm) 40%,var(--line))}
+.room h3{margin:0;font-size:16px;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.room h3 small{font-size:12px;color:var(--muted);font-weight:400}
+.sig{display:grid;grid-template-columns:10px minmax(0,1fr);gap:10px;font-size:13.5px;line-height:1.45}
+.sig .dot,.wallbar .dot{margin-top:5px}
+.sig b{font-weight:600}
+.sig span{display:block;color:var(--muted);font-size:12.5px}
+.wallbar{grid-column:1/-1;display:grid;grid-template-columns:10px minmax(0,1fr);gap:10px;font-size:13px;color:var(--muted);border:1.5px dashed var(--warm);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.wallbar b{color:var(--ink);margin-right:4px}
+/* axes */
+.axes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.axis{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.axis h3{margin:0;font-size:16px;display:flex;align-items:center;gap:8px}
+.axq{margin:0;font-size:12.5px;color:var(--muted)}
+.spark svg{display:block;width:100%;height:auto}
+.band{fill:var(--cool);opacity:.13}
+.sline{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round}
+.send{fill:var(--warm)}
+.axmsg{font-size:13px;background:var(--soft);border-radius:8px;padding:8px 10px;line-height:1.5}
+/* story */
+.story{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:center}
+.plans svg{display:block;width:100%;height:auto}
+@media (max-width:760px){
+  .story{grid-template-columns:1fr}
+  .comic{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rooms{grid-template-columns:1fr;border-radius:36px 36px 22px 22px}
+  .axes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .brand .mark{font-size:38px}
+  .board,.road{grid-template-columns:1fr}
+  .stage+.stage{border-left:none}
+  header h1{font-size:25px}
+}
+@media (max-width:480px){.comic,.axes{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.link{transition:none}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Pleos Connect 앱 개념 · 2차본 2026-11-04</div>
+  <div class="brand"><span class="mark">시트룸</span><span class="tag">좌석마다 나만의 방</span></div>
+  <h1>빛과 온도로 자리마다 방을 나누고, 방마다 몸의 신호를 읽어요</h1>
+  <p>1차본의 "공간 나누기"에 "조작 기록 = 몸의 신호"를 더했습니다. 구현 가능성은 Pleos 공개 문서 기준입니다.</p>
+  <div class="legend">
+    <span><i class="dot ok"></i>앱만으로 가능 (Pleos SDK)</span>
+    <span><i class="dot warn"></i>Pleos 확인·외부 데이터 필요</span>
+    <span><i class="dot no"></i>추가 장치(PEX) 필요</span>
+  </div>
+</header>
+
+<section>
+  <div class="eyebrow">생각의 출발</div>
+  <h2>작은 방에 넷이 함께 있을 때</h2>
+  <div class="comic">
+    <figure><img src="story/1.webp" alt="좁은 방에서 아빠는 일하고, 아이들은 귀를 막고, 엄마는 이불을 쥐고 있다" loading="eager"><figcaption><b>한 방에 넷이면</b><span>혼자라면 아늑한 원룸도, 가족 넷이 함께 지내면 누구도 편히 쉬기 어려워요.</span></figcaption></figure>
+    <figure><img src="story/2.webp" alt="밤길을 달리는 작은 차 안에 가족이 꼭 붙어 앉아 있다"><figcaption><b>차도 그런 방이었어요</b><span>생각해 보면 자동차는 바퀴 달린 두 평짜리 작은 방이었죠.</span></figcaption></figure>
+    <figure><img src="story/3.webp" alt="실내등 아래 가족은 졸리고 눈부셔하고, 운전하는 아빠는 피곤해 보인다"><figcaption><b>누구는 자고, 누구는 깨어 있어야 해요</b><span>벽이 없으니 운전하는 사람의 깨어 있음과 아이의 단잠이 서로 부딪혀요.</span></figcaption></figure>
+    <figure><img src="story/4.webp" alt="차 안 천장에 집 설계도가 떠 있다"><figcaption><b>방을 나눠 보면 어떨까요</b><span>한 칸짜리 원룸을 방이 나뉜 집처럼 바꿔 보기로 했어요.</span></figcaption></figure>
+    <figure><img src="story/5.webp" alt="차 안이 시원한 푸른빛과 따뜻한 주황빛으로 나뉘어 있다"><figcaption><b>벽 대신 빛과 온도로</b><span>진짜 벽은 세울 수 없으니, 자리마다 빛과 온도를 달리해 보이지 않는 벽을 만들어요.</span></figcaption></figure>
+    <figure><img src="story/6.webp" alt="가족은 편히 자고 운전자는 편안한 얼굴로 운전한다"><figcaption><b>모두 각자의 방에서</b><span>Pleos Connect의 센서 신호로 짓는 디지털 가벽. 이제 그 방법을 살펴볼게요.</span></figcaption></figure>
+  </div>
+  <div class="story">
+    <div class="story-text">
+      <b>그림으로 옮기면</b>
+      <p>운전석은 <em class="c">시원하고 밝은 서재</em>, 뒷좌석은 <em class="w">따뜻하고 어두운 침실</em>이 돼요. 칸막이는 없고, 자리별 열선·바람·조명이 벽 역할을 해요.</p>
+    </div>
+    <div class="panel plans">
+      <svg viewBox="0 0 520 380" role="img" aria-label="왼쪽은 칸막이 없는 원룸 같은 차, 오른쪽은 빛과 온도의 가상 벽으로 나뉜 차">
+        <!-- one-room car -->
+        <rect class="car" x="30" y="20" width="170" height="300" rx="62"/>
+        <rect x="45" y="80" width="140" height="190" rx="18" fill="var(--soft)"/>
+        <rect class="seat" x="55" y="98" width="52" height="56" rx="10"/><rect class="seat" x="123" y="98" width="52" height="56" rx="10"/>
+        <rect class="seat" x="55" y="196" width="52" height="56" rx="10"/><rect class="seat" x="123" y="196" width="52" height="56" rx="10"/>
+        <text x="81" y="131" text-anchor="middle" style="font-size:12px;font-weight:600;fill:var(--cool)">각성</text>
+        <text x="81" y="229" text-anchor="middle" style="font-size:12px;font-weight:600;fill:var(--night)">수면</text>
+        <text x="149" y="229" text-anchor="middle" style="font-size:12px;font-weight:600;fill:var(--night)">수면</text>
+        <path d="M118 160 L106 178 L116 178 L108 194" fill="none" stroke="var(--no)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+        <text x="115" y="346" text-anchor="middle" class="t-main">지금: 2평 원룸</text>
+        <text x="115" y="366" text-anchor="middle" class="t-sub">빛·온도가 한 공간에 섞임</text>
+
+        <!-- arrow -->
+        <path d="M222 170 L292 170" stroke="var(--ink)" stroke-width="2" fill="none"/>
+        <path d="M286 164 L294 170 L286 176" stroke="var(--ink)" stroke-width="2" fill="none"/>
+        <text x="257" y="158" text-anchor="middle" class="t-sub">코드로</text>
+        <text x="257" y="192" text-anchor="middle" class="t-sub">리모델링</text>
+
+        <!-- four-bay car -->
+        <rect class="car" x="320" y="20" width="170" height="300" rx="62"/>
+        <rect x="335" y="80" width="68" height="93" rx="14" fill="var(--cool)" opacity=".2"/>
+        <rect x="407" y="80" width="68" height="93" rx="14" fill="var(--soft)"/>
+        <rect x="335" y="177" width="68" height="93" rx="14" fill="var(--warm)" opacity=".24"/>
+        <rect x="407" y="177" width="68" height="93" rx="14" fill="var(--warm)" opacity=".24"/>
+        <rect class="seat" x="345" y="98" width="52" height="56" rx="10"/><rect class="seat" x="413" y="98" width="52" height="56" rx="10"/>
+        <rect class="seat" x="345" y="196" width="52" height="56" rx="10"/><rect class="seat" x="413" y="196" width="52" height="56" rx="10"/>
+        <line x1="335" y1="175" x2="475" y2="175" stroke="var(--warm)" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <line x1="405" y1="80" x2="405" y2="270" stroke="var(--cool)" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <text x="371" y="131" text-anchor="middle" style="font-size:12px;font-weight:600;fill:var(--cool)">서재</text>
+        <text x="439" y="131" text-anchor="middle" class="t-sub">동승석</text>
+        <text x="371" y="229" text-anchor="middle" style="font-size:12px;font-weight:600;fill:var(--warm)">침실</text>
+        <text x="439" y="229" text-anchor="middle" style="font-size:12px;font-weight:600;fill:var(--warm)">침실</text>
+        <text x="405" y="346" text-anchor="middle" class="t-main">목표: 4베이 아파트</text>
+        <text x="405" y="366" text-anchor="middle" class="t-sub">점선 = 빛과 온도의 가상 벽</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">차 안 배치</div>
+  <h2>자는 자리는 따뜻하고 어둡게, 운전석은 시원하고 밝게</h2>
+  <div class="panel scroll">
+    <svg viewBox="0 0 860 530" role="img" aria-label="차를 위에서 본 그림. 운전석과 뒷좌석 구역, 기능별 위치와 구현 가능성 표시">
+      <rect class="car" x="310" y="25" width="240" height="480" rx="92"/>
+      <path class="thin" d="M332 138 Q430 112 528 138"/>
+      <path class="thin" d="M336 468 Q430 490 524 468"/>
+      <text class="t-sub" x="430" y="70" text-anchor="middle">앞</text>
+      <ellipse class="glow-cool" cx="372" cy="232" rx="62" ry="74"/>
+      <rect class="glow-warm" x="322" y="318" width="216" height="136" rx="28"/>
+      <ellipse cx="372" cy="172" rx="26" ry="8" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      <rect x="410" y="150" width="40" height="16" rx="3" fill="var(--soft)" stroke="var(--car-stroke)"/>
+      <circle cx="430" cy="126" r="5" class="f-warn"/>
+      <rect class="seat" x="335" y="192" width="75" height="72" rx="14"/><rect class="seat" x="335" y="268" width="75" height="18" rx="6"/>
+      <rect class="seat" x="450" y="192" width="75" height="72" rx="14"/><rect class="seat" x="450" y="268" width="75" height="18" rx="6"/>
+      <rect class="seat" x="335" y="336" width="75" height="72" rx="14"/><rect class="seat" x="335" y="412" width="75" height="18" rx="6"/>
+      <rect class="seat" x="450" y="336" width="75" height="72" rx="14"/><rect class="seat" x="450" y="412" width="75" height="18" rx="6"/>
+      <text x="372" y="378" text-anchor="middle" style="font-size:17px;font-weight:600;fill:var(--night)">Zz</text>
+      <text x="487" y="378" text-anchor="middle" style="font-size:17px;font-weight:600;fill:var(--night)">Zz</text>
+      <circle cx="430" cy="306" r="17" fill="var(--surface)" class="s-ok" stroke-width="2"/>
+      <text x="430" y="310" text-anchor="middle" style="font-size:10px;font-weight:600">CO₂</text>
+      <circle cx="430" cy="396" r="10" fill="none" class="s-no" stroke-width="2" stroke-dasharray="3 3"/>
+      <line class="door" x1="310" y1="205" x2="310" y2="280"/><line class="door" x1="310" y1="345" x2="310" y2="420"/>
+      <line class="door" x1="550" y1="205" x2="550" y2="280"/><line class="door" x1="550" y1="345" x2="550" y2="420"/>
+
+      <!-- left callouts -->
+      <path class="leader" d="M290 114 L425 126"/><circle cx="282" cy="114" r="5" class="f-warn"/>
+      <text class="t-main" x="270" y="112" text-anchor="end">앞차 감지 → 반응 속도</text>
+      <text class="t-sub" x="270" y="130" text-anchor="end">ADAS 공개 범위 확인 필요</text>
+
+      <path class="leader" d="M290 214 L350 226"/><circle cx="282" cy="214" r="5" class="f-ok"/>
+      <text class="t-main" x="270" y="212" text-anchor="end">운전석 각성 + 평소의 나</text>
+      <text class="t-sub" x="270" y="230" text-anchor="end">시원·밝게 유지, 조향·브레이크로 감시</text>
+
+      <path class="leader" d="M290 330 L308 382"/><circle cx="282" cy="330" r="5" class="f-ok"/>
+      <text class="t-main" x="270" y="328" text-anchor="end">어르신 승하차 시간</text>
+      <text class="t-sub" x="270" y="346" text-anchor="end">문 열림 → 좌석 점유 전환까지</text>
+
+      <path class="leader" d="M290 456 L421 401"/><circle cx="282" cy="456" r="5" class="f-no"/>
+      <text class="t-main" x="270" y="454" text-anchor="end">자동 수면 감지 · 반려견 호흡</text>
+      <text class="t-sub" x="270" y="472" text-anchor="end">PEX 레이더 필요</text>
+
+      <!-- right callouts -->
+      <path class="leader" d="M570 150 L450 158"/><circle cx="578" cy="150" r="5" class="f-warn"/>
+      <text class="t-main" x="590" y="148">도착 맞춤 깨우기</text>
+      <text class="t-sub" x="590" y="166">내비 도착 예정 시간 필요</text>
+
+      <path class="leader" d="M570 262 L446 300"/><circle cx="578" cy="262" r="5" class="f-ok"/>
+      <text class="t-main" x="590" y="260">CO₂ 추정 → 환기</text>
+      <text class="t-sub" x="590" y="278">인원 × 내기 순환 × 팬 × 시간</text>
+
+      <path class="leader" d="M570 362 L530 372"/><circle cx="578" cy="362" r="5" class="f-ok"/>
+      <text class="t-main" x="590" y="360">뒷좌석 수면 구역</text>
+      <text class="t-sub" x="590" y="378">따뜻·어둡게, 풍량↓, 열선</text>
+
+      <path class="leader" d="M570 452 L512 436"/><circle cx="578" cy="452" r="5" class="f-ok"/>
+      <text class="t-main" x="590" y="450">「잠들었어요」 버튼</text>
+      <text class="t-sub" x="590" y="468">자동 감지 전까지 수동 입력</text>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">2차본 추가 · 방마다 읽는 신호</div>
+  <h2>조작 기록은 그 방 사람의 몸이 보낸 신호예요</h2>
+  <p class="lead">원룸에선 누가 온도를 바꿨는지 알 수 없어요. 방을 나누면 모든 조작이 좌석 단위로 그 사람에게 붙어요.</p>
+  <div class="rooms">
+    <div class="front">앞</div>
+    <div class="room study">
+      <h3>서재 <small>운전석</small></h3>
+      <div class="sig"><i class="dot ok"></i><div><b>평소의 나 4축</b><span>수행·자세·시야 보상·계획 (다음 장)</span></div></div>
+      <div class="sig"><i class="dot ok"></i><div><b>졸음 자구책</b><span>창문 열기·찬바람 = 본인이 졸음을 느낀 시점. 효과는 약 15분, 그 안에 휴식 권고</span></div></div>
+      <div class="sig"><i class="dot ok"></i><div><b>귀가 전 머무름</b><span>도착 후 문 닫고 앉아 있는 시간. 서재가 "혼자의 방"이 되는 시간의 몇 주 추세</span></div></div>
+    </div>
+    <div class="room elder">
+      <h3>어르신 방 <small>동승석</small></h3>
+      <div class="sig"><i class="dot ok"></i><div><b>승하차 시간</b><span>문 열림 → 좌석 점유 전환. 하체 거동의 추세</span></div></div>
+      <div class="sig"><i class="dot ok"></i><div><b>열 감각 둔화</b><span>더운데도 온도를 안 낮추는 정도. "괜찮다"는 말 대신 조작을 봐요</span></div></div>
+    </div>
+    <div class="room bed">
+      <h3>침실 <small>뒷좌석 왼쪽</small></h3>
+      <div class="sig"><i class="dot ok"></i><div><b>수면 구역</b><span>「잠들었어요」 → 따뜻·어둡게, 풍량↓, 열선</span></div></div>
+      <div class="sig"><i class="dot warn"></i><div><b>빛의 벽</b><span>스마트 글라스·블라인드가 있는 차면 햇빛을 실제로 막아요</span></div></div>
+      <div class="sig"><i class="dot no"></i><div><b>자동 수면 감지</b><span>레이더(PEX)가 있으면 버튼이 필요 없어요</span></div></div>
+    </div>
+    <div class="room pet">
+      <h3>반려견 자리 <small>뒷좌석 오른쪽</small></h3>
+      <div class="sig"><i class="dot no"></i><div><b>이동 스트레스 지도</b><span>헐떡임(레이더) × 실내 온도로 더위와 불안을 나눠요</span></div></div>
+    </div>
+    <div class="wallbar"><i class="dot ok"></i><div><b>벽 사이 · 공조 다툼</b> 구역끼리 반대로 바꾸는 조작의 반복. 가상 벽이 필요한 이유이자, 벽을 친 뒤 줄었는지 보는 효과 지표</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">평소의 나 · 4축</div>
+  <h2>오늘의 나를 평소의 나와 비교하는 네 가지 눈</h2>
+  <p class="lead">경고가 아니라 "평소와 달라졌어요" 알림이에요. 원인은 단정하지 않고 질문으로 덧붙여요. 곡선은 설명용 예시예요.</p>
+  <div class="axes" id="axes"></div>
+  <p class="note">가족이 같은 차를 쓰므로 좌석 메모리 번호와 운전 패턴으로 사람을 나눠, 각자의 평소와만 비교해요. 다른 차와의 비교는 "그 길이 원래 어려웠나"를 빼는 데만 써요.</p>
+</section>
+
+<section>
+  <div class="eyebrow">신호 → 기능</div>
+  <h2>어떤 신호가 어떤 기능으로 들어가나</h2>
+  <p class="lead">왼쪽은 들어오는 신호, 오른쪽은 기능입니다. 항목을 누르면 연결만 남습니다.</p>
+  <div class="panel scroll"><svg id="flow" role="img" aria-label="신호와 기능의 연결도"></svg></div>
+  <p class="hint">선 색은 그 기능의 구현 가능성입니다. 초록 신호 몇 개만으로 v3의 핵심 기능이 대부분 완성됩니다.</p>
+</section>
+
+<section>
+  <div class="eyebrow">한 번의 이동 · 예시</div>
+  <h2>주말 귀성 2시간, 기능이 켜지는 순서</h2>
+  <p class="lead">뒷좌석 아이 둘, 동승석 배우자. 곡선은 설명용 예시이며 측정값이 아닙니다.</p>
+  <div class="panel scroll"><svg id="trip" role="img" aria-label="2시간 이동 동안 각 기능의 시간별 동작"></svg></div>
+</section>
+
+<section>
+  <div class="eyebrow">구현 가능성</div>
+  <h2>세 묶음으로 나눈 유망 기능</h2>
+  <div class="board" id="board"></div>
+  <p class="note">이번에 뺀 것: 벨트 체결 시간(바로 매는 사람이 많아 오측치 과다), 경고 해소 기간·하이패스 음량(과적합), 가족별 자동 설정(이미 있는 기능 → 사람 구분의 기반으로만 사용), 야간 운전 저하(시야 보상 축에 합침).</p>
+  <p class="note">여러 차의 데이터로 보정하는 부분은 앱 코드로 만들 수 있지만, 효과는 서버와 다수 사용자가 생긴 뒤에야 나옵니다.</p>
+</section>
+
+<section>
+  <div class="eyebrow">순서</div>
+  <h2>SDK만으로 먼저 닫고, 확인되는 만큼 넓힌다</h2>
+  <div class="roadwrap"><div class="road" id="road"></div></div>
+  <p class="note">에뮬레이터로는 앱 로직만 검증됩니다. 실내 온도·속도·위치 입력 카드가 없어서, 잠들기나 CO₂ 같은 실제 효과는 실차에서만 확인됩니다.</p>
+</section>
+</div>
+
+<script>
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+
+const signals=[
+ ["s1","좌석 점유","ok"],["s2","문 열림·닫힘","ok"],["s3","공조 상태·설정 변경","ok"],["s4","실내 온도","ok"],
+ ["s15","「잠들었어요」 입력","ok"],["s16","좌석 위치 11종","ok"],["s5","조향각","ok"],["s6","브레이크 페달","ok"],
+ ["s19","방향지시등","ok"],["s20","상향등 스위치","ok"],["s18","창문 위치","ok"],["s8","충전 상태","ok"],["s9","시간 (기기 시계)","ok"],
+ ["s10","앞차 (ADAS)","warn"],["s11","도착 예정 (내비)","warn"],["s12","속도·위치","warn"],["s13","레이더 (PEX)","no"],["s14","가속도 센서 (PEX)","no"]
+];
+const features=[
+ {id:"f1",n:"좌석별 수면 구역",t:"ok",in:["s1","s3","s4","s15"],chips:["열선·통풍","구역 온도","조명","수동 입력"],b:"공조 제어 SDK \"준비 중\", 제어 허용 범위 확인"},
+ {id:"f2",n:"운전석 각성 구역",t:"ok",in:["s1","s3","s4"],chips:["공조","좌석","조명"],b:"위와 같음"},
+ {id:"f3",n:"CO₂ 추정",t:"ok",in:["s1","s3","s9"],chips:["좌석 점유","내기 순환","팬","시간"],b:"내기 자동 전환이 안 되면 알림만"},
+ {id:"f4",n:"평소의 나 · 수행",t:"ok",in:["s5","s6","s9"],chips:["조향각","브레이크"],b:"신호 갱신 주기 미확인"},
+ {id:"f16",n:"평소의 나 · 자세",t:"ok",in:["s16","s9"],chips:["좌석 위치 11종"],b:"전동 시트 차종만"},
+ {id:"f17",n:"평소의 나 · 계획",t:"ok",in:["s19","s6","s5"],chips:["깜빡이→브레이크→조향 간격"],b:"가속 페달 없음(브레이크 해제로 대체), 교차로 회전만"},
+ {id:"f18",n:"졸음 자구책",t:"ok",in:["s18","s3","s5"],chips:["창문","찬바람"],b:"볼륨은 SDK에 없음"},
+ {id:"f19",n:"귀가 전 머무름",t:"ok",in:["s2","s1","s9"],chips:["문","좌석 점유","시간"],b:"이유 구분 불가 → 몇 주 추세만"},
+ {id:"f5",n:"어르신 승하차 시간",t:"ok",in:["s1","s2","s9"],chips:["문","좌석 점유 전환"],b:"이벤트 시간 정밀도 확인"},
+ {id:"f20",n:"열 감각 둔화",t:"ok",in:["s4","s3","s1"],chips:["좌석별 실내 온도","설정 변경"],b:"다른 차 기준(보통 조작 지점)은 서버 필요"},
+ {id:"f21",n:"공조 다툼 (효과 지표)",t:"ok",in:["s3","s1"],chips:["구역별 설정 이력"],b:"기능보다 실험 지표"},
+ {id:"f7",n:"충전 휴식 회복",t:"ok",in:["s8","s5","s6"],chips:["충전 상태","평소의 나"],b:"충전 시작·종료 신호 확인"},
+ {id:"f22",n:"평소의 나 · 시야 보상",t:"warn",in:["s20","s12","s9"],chips:["상향등(수동)","같은 길 다른 차"],b:"위치 필요, 자동 상향등은 제외"},
+ {id:"f8",n:"평소의 나 · 반응 속도",t:"warn",in:["s10","s6"],chips:["ADAS 앞차","브레이크"],b:"ADAS 공개 범위"},
+ {id:"f9",n:"도착 맞춤 깨우기",t:"warn",in:["s11","s15"],chips:["내비"],b:"도착 예정 시간 제공 여부"},
+ {id:"f10",n:"좌석별 멀미",t:"warn",in:["s5","s12"],chips:["조향각","속도"],b:"SDK에 속도 없음"},
+ {id:"f11",n:"경로 성격 선택",t:"warn",in:["s5","s6","s11","s12"],chips:["내비 경유지","조향·브레이크"],b:"경로 직접 입력 불가, 곡률 지도"},
+ {id:"f15",n:"가족 상태 휴식 타이밍",t:"warn",in:["s11","s9","s1"],chips:["모든 모듈","휴게소 데이터"],b:"도착 예정 시간, 휴게소 공공데이터"},
+ {id:"f23",n:"빛의 벽 (스마트 글라스)",t:"warn",in:["s15","s1"],chips:["스마트 글라스","블라인드"],b:"탑재 차종 확인"},
+ {id:"f12",n:"자동 수면 감지",t:"no",in:["s13"],chips:["레이더"],b:"PEX 사양 미공개"},
+ {id:"f13",n:"군집 진동 지도",t:"no",in:["s14","s12"],chips:["가속도 센서"],b:"PEX 사양 미공개"},
+ {id:"f14",n:"반려견 이동 스트레스",t:"no",in:["s13","s4"],chips:["레이더","실내 온도"],b:"PEX 사양 미공개"}
+];
+const extraWarn=[{n:"주차 미기후",chips:["실내 온도"],b:"시동 전 값 유효성, 외기온 없음"},{n:"운전석만 소리",chips:["좌석별 음향(SSZ)"],b:"탑재 차종·앱 접근"},{n:"부드러운 운전 가이드",chips:["조향·브레이크"],b:"진동 지도 부분은 PEX"}];
+
+/* axes sparklines */
+(function(){
+ let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647-.5;};
+ const N=30,mk=f=>Array.from({length:N},(_,i)=>f(i));
+ const axes=[
+  {t:"ok",h:"수행",q:"반응·정밀·꾸준함",chips:["조향각","브레이크"],d:mk(i=>rnd()*0.6+(i>25?-(i-25)*0.5:0)),msg:"평소보다 반응이 늦어요. 잠시 쉬어 갈까요?"},
+  {t:"ok",h:"자세",q:"스스로 고른 자세의 추세",chips:["좌석 위치 11종"],d:mk(i=>rnd()*0.5+(i>16?(i-16)*0.28:0)),msg:"3주째 등받이를 평소보다 세워 앉고, 자세를 자주 고쳐요. 허리가 불편하신가요?"},
+  {t:"warn",h:"시야 보상",q:"같은 길에서 상향등 켜는 정도",chips:["상향등(수동)","같은 길 다른 차"],d:mk(i=>rnd()*0.6+(i>18?(i-18)*0.2:0)),msg:"같은 길에서 상향등을 평소보다 자주 켜요. 밤길이 잘 보이시나요?"},
+  {t:"ok",h:"계획",q:"깜빡이→브레이크→조향 간격",chips:["방향지시등","브레이크","조향각"],d:mk(i=>rnd()*(i>22?2.4:0.6)),msg:"회전할 때 조작 순서가 평소보다 들쭉날쭉해요."}
+ ];
+ const host=document.getElementById("axes");
+ axes.forEach(a=>{
+  const c=document.createElement("div");c.className="axis";
+  c.innerHTML=`<h3><i class="dot ${a.t}"></i>${a.h}</h3><p class="axq">${a.q}</p><div class="spark"></div><div class="chips">${a.chips.map(x=>`<span class="chip">${x}</span>`).join("")}</div><div class="axmsg">${a.msg}</div>`;
+  host.appendChild(c);
+  const W=200,H=64,P=6,svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":a.h+" 예시 곡선"},c.querySelector(".spark"));
+  const base=a.d.slice(0,16),m=base.reduce((x,y)=>x+y,0)/base.length,sd=Math.sqrt(base.reduce((x,y)=>x+(y-m)**2,0)/base.length)||.2;
+  const lo=Math.min(...a.d,m-2*sd),hi=Math.max(...a.d,m+2*sd);
+  const X=i=>P+i*(W-2*P)/(N-1),Y=v=>H-P-(v-lo)/(hi-lo)*(H-2*P);
+  el("rect",{x:P,y:Y(m+1.5*sd),width:W-2*P,height:Y(m-1.5*sd)-Y(m+1.5*sd),class:"band"},svg);
+  el("path",{d:"M"+a.d.map((v,i)=>`${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" L"),class:"sline"},svg);
+  const k=N-1;el("circle",{cx:X(k),cy:Y(a.d[k]),r:3.5,class:"send"},svg);
+ });
+})();
+
+/* flow diagram */
+(function(){
+ const svg=document.getElementById("flow"),rowH=34,top=14,h=Math.max(signals.length,features.length)*rowH+top*2;
+ svg.setAttribute("viewBox",`0 0 860 ${h}`);
+ const L={x:10,w:200},R={x:640,w:210};
+ const ly={},ry={};
+ const offL=top+(h-top*2-signals.length*rowH)/2,offR=top+(h-top*2-features.length*rowH)/2;
+ signals.forEach((s,i)=>ly[s[0]]=offL+i*rowH+rowH/2);
+ features.forEach((f,i)=>ry[f.id]=offR+i*rowH+rowH/2);
+ const gl=el("g",{},svg),gn=el("g",{},svg);
+ const links=[];
+ features.forEach(f=>f.in.forEach(s=>{
+  const y1=ly[s],y2=ry[f.id],x1=L.x+L.w,x2=R.x;
+  const p=el("path",{d:`M${x1} ${y1} C${x1+170} ${y1} ${x2-170} ${y2} ${x2} ${y2}`,class:`link s-${f.t}`},gl);
+  links.push({p,s,f:f.id});
+ }));
+ const nodes={};
+ function node(id,x,w,y,label,t,side){
+  const g=el("g",{class:"node",tabindex:"0",role:"button","aria-label":label},gn);
+  el("rect",{x,y:y-13,width:w,height:26,rx:7},g);
+  const cx=side==="L"?x+14:x+14;
+  el("circle",{cx,cy:y,r:4.5,class:`f-${t}`},g);
+  el("text",{x:x+26,y:y+4.5},g,label);
+  nodes[id]=g;
+  const act=()=>toggle(id);
+  g.addEventListener("click",act);
+  g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();act();}});
+ }
+ signals.forEach(s=>node(s[0],L.x,L.w,ly[s[0]],s[1],s[2],"L"));
+ features.forEach(f=>node(f.id,R.x,R.w,ry[f.id],f.n,f.t,"R"));
+ let cur=null;
+ function toggle(id){
+  cur=cur===id?null:id;
+  svg.classList.toggle("focus",!!cur);
+  Object.values(nodes).forEach(n=>n.classList.remove("on","lit"));
+  links.forEach(l=>l.p.classList.remove("on"));
+  if(!cur)return;
+  nodes[cur].classList.add("on","lit");
+  links.forEach(l=>{if(l.s===cur||l.f===cur){l.p.classList.add("on");nodes[l.s].classList.add("lit");nodes[l.f].classList.add("lit");}});
+ }
+})();
+
+/* trip timeline */
+(function(){
+ const svg=document.getElementById("trip");svg.setAttribute("viewBox","0 0 860 400");
+ const X=m=>170+m*(670/120),lane=56,y0=24;
+ const lanes=[["뒷좌석 아이","ok"],["뒷좌석 환경","ok"],["운전석","ok"],["CO₂ 추정","ok"],["평소의 나","ok"],["도착 깨우기","warn"]];
+ lanes.forEach((l,i)=>{const y=y0+i*lane;
+  el("line",{x1:10,x2:850,y1:y+lane-4,y2:y+lane-4,stroke:"var(--line)","stroke-width":1},svg);
+  el("circle",{cx:16,cy:y+22,r:5,class:`f-${l[1]}`},svg);
+  el("text",{x:28,y:y+27,class:"t-main"},svg,l[0]);
+ });
+ const Y=i=>y0+i*lane;
+ // lane 0 sleep
+ [[0,30,"awake","깨어 있음"],[30,103,"sleep","잠"],[103,120,"awake","깸"]].forEach(([a,b,k,t])=>{
+  el("rect",{x:X(a),y:Y(0)+8,width:X(b)-X(a)-2,height:28,rx:6,fill:k==="sleep"?"var(--night)":"var(--soft)"},svg);
+  el("text",{x:(X(a)+X(b))/2,y:Y(0)+27,"text-anchor":"middle",style:`font-size:12px;fill:${k==="sleep"?"var(--night-ink)":"var(--muted)"}`},svg,t);
+ });
+ // lane 1 env: temp & light
+ const tY=v=>Y(1)+44-(v-21)*9, bY=v=>Y(1)+44-v*0.36;
+ const temp=[[0,22],[30,22],[34,24],[100,24],[118,22],[120,22]];
+ const lit=[[0,100],[30,100],[34,15],[100,15],[118,100],[120,100]];
+ el("path",{d:"M"+temp.map(([m,v])=>`${X(m)} ${tY(v)}`).join(" L"),fill:"none",stroke:"var(--warm)","stroke-width":2.5},svg);
+ el("path",{d:"M"+lit.map(([m,v])=>`${X(m)} ${bY(v)}`).join(" L"),fill:"none",stroke:"var(--muted)","stroke-width":1.8,"stroke-dasharray":"5 4"},svg);
+ el("text",{x:X(60),y:tY(24)-5,"text-anchor":"middle",style:"font-size:12px;fill:var(--warm);font-weight:600"},svg,"온도 ↑ 따뜻하게");
+ el("text",{x:X(60),y:bY(15)+14,"text-anchor":"middle",class:"t-sub"},svg,"밝기 ↓ 어둡게");
+ // lane 2 driver
+ el("rect",{x:X(0),y:Y(2)+10,width:X(120)-X(0),height:24,rx:6,fill:"var(--cool)",opacity:.2},svg);
+ el("text",{x:X(60),y:Y(2)+27,"text-anchor":"middle",style:"font-size:12px;fill:var(--cool);font-weight:600"},svg,"시원·밝게 유지 — 뒷좌석 수면 구역과 분리");
+ // lane 3 co2
+ const cY=v=>Y(3)+46-(v-600)*(38/1100);
+ let pts=[[0,800],[30,800]],m=30;
+ while(m<100){pts.push([Math.min(m+8,100),1500]);m+=8;if(m>=100)break;pts.push([m+2,800]);m+=2;}
+ pts.push([102,800],[120,800]);
+ el("line",{x1:X(0),x2:X(120),y1:cY(1500),y2:cY(1500),stroke:"var(--muted)","stroke-dasharray":"3 4"},svg);
+ el("path",{d:"M"+pts.map(([a,v])=>`${X(a)} ${cY(v)}`).join(" L"),fill:"none",stroke:"var(--ok)","stroke-width":2},svg);
+ el("text",{x:X(0)+2,y:cY(1500)-4,class:"t-sub"},svg,"1,500 ppm 추정 시 잠깐 외기로");
+ el("text",{x:X(15),y:cY(800)+14,"text-anchor":"middle",class:"t-sub"},svg,"외기");
+ el("text",{x:X(111),y:cY(800)+14,"text-anchor":"middle",class:"t-sub"},svg,"외기");
+ // lane 4 baseline me
+ const sY=v=>Y(4)+22+v*20;
+ const sp=[];for(let t=0;t<=84;t+=2){let v=Math.sin(t*0.7)*0.12;if(t>68)v+=(t-68)/16*0.9;sp.push([t,v]);}
+ const sp2=[];for(let t=94;t<=120;t+=2)sp2.push([t,Math.sin(t*0.7)*0.12+0.05]);
+ el("line",{x1:X(0),x2:X(120),y1:sY(0.6),y2:sY(0.6),stroke:"var(--no)","stroke-dasharray":"3 4",opacity:.7},svg);
+ el("rect",{x:X(84),y:Y(4)+6,width:X(94)-X(84),height:36,rx:6,fill:"var(--soft)",stroke:"var(--line)"},svg);
+ el("text",{x:(X(84)+X(94))/2,y:Y(4)+28,"text-anchor":"middle",style:"font-size:11px;fill:var(--muted)"},svg,"충전 휴식");
+ [sp,sp2].forEach(a=>el("path",{d:"M"+a.map(([t,v])=>`${X(t)} ${sY(v)}`).join(" L"),fill:"none",stroke:"var(--ink)","stroke-width":2},svg));
+ el("circle",{cx:X(80),cy:sY(0.75),r:5,fill:"var(--no)"},svg);
+ el("text",{x:X(79),y:Y(4)+12,"text-anchor":"end",style:"font-size:12px;fill:var(--no);font-weight:600"},svg,"평소보다 떨어짐 → 휴게소 권고");
+ el("text",{x:X(95)+4,y:Y(4)+12,style:"font-size:12px;fill:var(--ok);font-weight:600"},svg,"회복량 기록");
+ // lane 5 wake
+ el("path",{d:`M${X(100)} ${Y(5)+40} L${X(118)} ${Y(5)+10} L${X(118)} ${Y(5)+40} Z`,fill:"var(--warn)",opacity:.35},svg);
+ el("text",{x:X(99),y:Y(5)+30,"text-anchor":"end",style:"font-size:12px;fill:var(--warn);font-weight:600"},svg,"도착 20분 전부터 빛·온도를 서서히 올림 →");
+ // marker sleep entry
+ el("line",{x1:X(30),x2:X(30),y1:Y(0)+4,y2:Y(4)-6,stroke:"var(--night)","stroke-dasharray":"2 3"},svg);
+ // axis
+ const ay=y0+lanes.length*lane+6;
+ for(let t=0;t<=120;t+=15){el("line",{x1:X(t),x2:X(t),y1:ay-4,y2:ay+2,stroke:"var(--muted)"},svg);
+  if(t%30===0)el("text",{x:X(t),y:ay+18,"text-anchor":"middle",class:"t-axis"},svg,t+"분");}
+ el("text",{x:X(30)+4,y:ay+18,class:"t-sub"},svg,"");
+})();
+
+/* board */
+(function(){
+ const cols=[["ok","앱만으로 가능","Pleos SDK 신호만"],["warn","확인 필요","Pleos 답변·외부 데이터"],["no","추가 장치 필요","PEX 센서"]];
+ const b=document.getElementById("board");
+ cols.forEach(([t,h,s])=>{
+  const c=document.createElement("div");c.className="col "+t;
+  c.innerHTML=`<h3><i class="dot ${t}"></i>${h} <small>${s}</small></h3>`;
+  const list=features.filter(f=>f.t===t).concat(t==="warn"?extraWarn:[]);
+  list.forEach(f=>{const d=document.createElement("div");d.className="card";
+   d.innerHTML=`<b>${f.n}</b><div class="chips">${f.chips.map(x=>`<span class="chip">${x}</span>`).join("")}</div><div class="block">${f.b}</div>`;
+   c.appendChild(d);});
+  b.appendChild(c);
+ });
+})();
+
+/* roadmap */
+(function(){
+ const st=[
+  ["ok","1단계 · 지금 SDK로","방 나누기와 방마다 읽는 신호가 여기서 완성돼요.",["좌석별 수면 구역","운전석 각성","CO₂ 추정","평소의 나 (수행·자세·계획)","졸음 자구책","귀가 전 머무름","어르신 방 (승하차·열 감각)","공조 다툼 지표","충전 휴식 회복"]],
+  ["warn","2단계 · Pleos 답변 후","기술지원 질문의 답과 위치 정보에 따라 열려요.",["평소의 나 (시야 보상·반응 속도)","도착 맞춤 깨우기","좌석별 멀미","경로 성격 선택","휴식 타이밍","빛의 벽 (스마트 글라스)","주차 미기후"]],
+  ["no","3단계 · PEX 장착 후","버튼 입력이 자동 감지로 바뀝니다.",["자동 수면 감지","군집 진동 지도","반려견 스트레스"]]
+ ];
+ const r=document.getElementById("road");
+ st.forEach(([t,h,p,items])=>{const d=document.createElement("div");d.className="stage "+t;
+  d.innerHTML=`<h3>${h}</h3><p>${p}</p><div class="chips">${items.map(x=>`<span class="chip">${x}</span>`).join("")}</div>`;r.appendChild(d);});
+})();
+</script>

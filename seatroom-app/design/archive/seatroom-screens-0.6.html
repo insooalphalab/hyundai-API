@@ -1,0 +1,605 @@
+<title>시트룸 화면</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 차 화면은 한 가지 모습(따뜻한 샌드)으로 고정. 페이지 바탕도 명시적으로 칠한다. */
+:root{
+  /* 현대 CI 색: Light Sand #f6f3f2 · Sand #e4dcd3 · Hyundai Blue #002c5f · Gold #a36b4f · Active Blue #00aad2 · Sky Blue #aacae6 · Active Red #e63312
+     차갑지 않게 바탕은 샌드 계열, 글자는 따뜻한 먹색, 파랑은 '운전'과 상태 표시에만. */
+  --bg:#F6F3F2; --surface:#FFFFFF; --soft:#EFE9E3; --line:#E4DCD3; --ink:#2B2522; --muted:#857669;
+  --cool:#002C5F; --warm:#A36B4F; --focus:#AACAE6; --ok:#00AAD2; --warn:#E63312; --no:#E63312; --page:#E4DCD3;
+  --learning:#C9B8A6; --diff:#A36B4F; /* '평소와 다름'은 경고가 아니라서 빨강 대신 Gold */
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+.top h1{font-size:18px;margin:0;font-weight:600}
+.top p{margin:0;color:var(--muted);font-size:13px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px}
+.ctl button{font:inherit;font-size:13px;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.ctl button[aria-pressed="true"]{background:var(--cool);color:#fff;border-color:var(--cool)}
+button:focus-visible,.seat:focus-visible,.card:focus-visible{outline:3px solid var(--cool);outline-offset:2px}
+
+/* 차 디스플레이: 비율 고정, 안의 크기는 화면 폭에 비례(cqw) */
+.screen{container-type:inline-size;width:100%;aspect-ratio:1520/800;background:var(--bg);border-radius:18px;border:1px solid #D6CABD;box-shadow:0 1px 0 #fff inset,0 18px 40px -24px rgba(90,60,40,.35);overflow:hidden;position:relative}
+.in{position:absolute;inset:0;padding:1.6cqw 2cqw;display:flex;flex-direction:column;gap:1.1cqw}
+.hd{display:flex;align-items:center;gap:1cqw}
+.brand{font-size:2.3cqw;font-weight:700}
+.tag{font-size:1.25cqw;color:var(--muted)}
+.sp{flex:1}
+.pill{font:inherit;font-size:1.15cqw;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:.55cqw 1.1cqw;cursor:pointer;display:inline-flex;align-items:center;gap:.6cqw}
+.pill.cool{border-color:var(--cool);color:var(--cool)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;font:inherit;font-size:1.4cqw;color:var(--muted);background:none;border:0;padding:.7cqw 0;cursor:pointer;border-bottom:3px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--cool)}
+.view{flex:1;min-height:0;display:flex;gap:1.6cqw}
+[hidden]{display:none!important}
+
+/* 방 */
+.carbox{flex:1.25;display:flex;justify-content:center;min-height:0}
+.car{height:100%;aspect-ratio:.72;border:.25cqw solid var(--line);border-radius:7cqw 7cqw 3.8cqw 3.8cqw;padding:2.6cqw 1.7cqw 1.4cqw;display:flex;flex-direction:column;gap:1.1cqw}
+.front{text-align:center;color:var(--muted);font-size:1cqw}
+.row{flex:1;display:flex;gap:1.1cqw;min-height:0}
+.seat{flex:1;border-radius:1.7cqw;border:.17cqw solid var(--line);background:color-mix(in srgb,var(--line) 12%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:.9cqw .5cqw;cursor:pointer;color:inherit;font:inherit}
+.seat .lb{font-size:1cqw;color:var(--muted)}
+.seat .md{font-size:1.6cqw;font-weight:700;color:var(--muted)}
+.seat .tp{font-size:1cqw;color:var(--muted)}
+.seat svg{width:4.3cqw;height:4.3cqw}
+.seat .ow{font-size:1.15cqw;font-weight:600}
+.seat.drive{border-color:var(--cool);background:color-mix(in srgb,var(--focus) 30%,var(--bg))}
+.seat.rest{border-color:var(--warm);background:color-mix(in srgb,var(--warm) 24%,transparent)}
+.seat.focus{border-color:#00AAD2;background:color-mix(in srgb,#00AAD2 14%,var(--bg))}
+.seat.drive .md,.seat.rest .md,.seat.focus .md{color:var(--ink)}
+.seat.sel{box-shadow:0 0 0 .35cqw var(--ink)}
+.hint{text-align:center;color:var(--muted);font-size:.95cqw}
+.side{flex:1.15;display:flex;flex-direction:column;gap:1cqw;min-height:0}
+.tile{background:var(--surface);border-radius:1.7cqw;padding:1.3cqw}
+/* 이 자리가 배운 것 */
+.learn{flex:1;display:flex;flex-direction:column;gap:.9cqw;min-height:0}
+.lh{display:flex;align-items:center;gap:.9cqw}
+.lh .nm{font-size:1.9cqw;font-weight:700}
+.lh .sl{font-size:1.1cqw;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{white-space:nowrap;font:inherit;font-size:1.2cqw;color:var(--muted);background:none;border:0;padding:.55cqw 1.2cqw;cursor:pointer}
+.seg button[aria-pressed="true"]{color:#fff;font-weight:700}
+.seg button[data-m="drive"][aria-pressed="true"]{background:var(--cool)}
+.seg button[data-m="rest"][aria-pressed="true"]{background:var(--warm)}
+.seg button[data-m="focus"][aria-pressed="true"]{background:#00AAD2}
+.seg button[data-m=""][aria-pressed="true"]{background:var(--muted)}
+.prefs{display:flex;gap:.8cqw}
+.pf{flex:1;background:var(--soft);border-radius:1.2cqw;padding:.8cqw 1cqw}
+.pf b{display:block;font-size:2cqw}
+.pf span{font-size:1cqw;color:var(--muted)}
+.lc{flex:1;min-height:0;display:flex;flex-direction:column}
+.lc svg{flex:1;min-height:0;width:100%}
+.lc .cap{display:flex;gap:1.2cqw;font-size:1cqw;color:var(--muted)}
+.lc .cap i{display:inline-block;width:.9cqw;height:.9cqw;border-radius:50%;margin-right:.35cqw;vertical-align:-.1cqw}
+.fix{display:flex;align-items:baseline;gap:.8cqw;font-size:1.1cqw;color:var(--muted)}
+.fix b{font-size:1.7cqw;color:var(--ink)}
+.fix b.ok{color:var(--ok)}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6cqw;color:var(--muted);font-size:1.3cqw;text-align:center}
+.empty svg{width:6cqw;height:6cqw;flex:none}
+/* 손님 판정 */
+.why{display:flex;flex-direction:column;gap:.6cqw}
+.why div{display:flex;align-items:center;gap:.8cqw;background:var(--soft);border-radius:1cqw;padding:.7cqw 1cqw;font-size:1.15cqw}
+.why i{flex:none;width:1.9cqw;height:1.9cqw;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:1.1cqw;color:#fff;background:var(--warm)}
+.why i.no{background:var(--learning)}
+.why span{color:var(--muted);font-size:1cqw;margin-left:auto;text-align:right}
+.acts{display:flex;gap:.8cqw;margin-top:auto}
+.acts .btn{flex:1}
+.btn.line{background:none;color:var(--ink);border:1px solid var(--line)}
+.btn.gold{background:var(--warm)}
+.verdict{font-size:1.1cqw;color:var(--muted)}
+/* 아래 줄: 공기·운전석 상태를 작게 */
+.mini2{display:flex;gap:1cqw}
+.mini2 .tile{flex:1;display:flex;align-items:center;gap:.9cqw;padding:.9cqw 1.1cqw}
+.mini2 .big{font-size:1.4cqw;font-weight:700}
+.mini2 .small{font-size:.95cqw;color:var(--muted)}
+.mini2 .pill{font-size:1cqw;padding:.4cqw .8cqw}
+.btn{font:inherit;font-weight:700;font-size:1.3cqw;border:0;border-radius:1.3cqw;padding:1cqw 1.4cqw;cursor:pointer;color:#fff}
+.btn.sm{font-size:1cqw;padding:.5cqw .8cqw;border-radius:.8cqw}
+.btn.warn{background:var(--warn)}.btn.ok{background:var(--ok)}
+.dot{width:1.2cqw;height:1.2cqw;border-radius:50%;flex:none}
+.legend{display:flex;gap:1.2cqw;font-size:.95cqw;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:.95cqw;height:.95cqw;border-radius:.25cqw;margin-right:.4cqw;vertical-align:-.1cqw}
+
+/* 평소의 나 */
+.base{flex:1;display:flex;flex-direction:column;gap:1.2cqw;min-height:0}
+.brow{display:flex;align-items:center;gap:.8cqw}
+.who{font-size:1.6cqw;font-weight:600}
+.chip{white-space:nowrap;font:inherit;font-size:1.15cqw;border:1px solid var(--cool);color:var(--cool);background:none;border-radius:999px;padding:.55cqw 1.2cqw;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--cool);color:#fff}
+.axes{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:1.1cqw;min-height:0}
+.ax{background:var(--surface);border-radius:1.7cqw;border:.16cqw solid var(--surface);padding:1.4cqw;display:flex;flex-direction:column;justify-content:space-between}
+.ax.changed{border-color:var(--diff)}
+.ax .n{font-size:1.75cqw;font-weight:700}
+.ax svg{width:100%;height:4.2cqw}
+.ax .st{font-size:1.9cqw;font-weight:700}
+.ax .q{font-size:.95cqw;color:var(--muted)}
+.lower{flex:1.05;display:flex;gap:1.1cqw;min-height:0}
+.alert{flex:2;border-radius:1.7cqw;border:.16cqw solid var(--line);background:color-mix(in srgb,var(--line) 14%,transparent);padding:1.4cqw;display:flex;flex-direction:column;gap:.8cqw}
+.alert.sent{border-color:var(--diff);background:color-mix(in srgb,var(--diff) 12%,transparent)}
+.alert.calm{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.alert .h{display:flex;align-items:center;gap:1cqw;font-size:1.75cqw;font-weight:700}
+.alert svg{width:2.6cqw;height:2.6cqw;flex:none}
+.tags{display:flex;flex-wrap:wrap;gap:.6cqw}
+.tg{font-size:1.15cqw;font-weight:600;border-radius:999px;padding:.4cqw 1cqw}
+.tg.w{color:var(--diff);background:color-mix(in srgb,var(--diff) 16%,transparent)}
+.tg.c{color:var(--cool);background:color-mix(in srgb,var(--cool) 16%,transparent)}
+.alert .f{font-size:1cqw;color:var(--muted)}
+.trend{flex:1;background:var(--surface);border-radius:1.7cqw;padding:1.4cqw;display:flex;flex-direction:column;gap:.6cqw}
+.trend .t{font-size:1.4cqw;font-weight:600}
+.trend .v{font-size:1.7cqw;font-weight:700}
+.trend svg{flex:1;min-height:0;width:100%}
+.opts{display:flex;gap:.6cqw;margin-top:auto}
+.opts button{flex:1;font:inherit;font-size:1.1cqw;font-weight:600;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:1cqw;padding:.75cqw .4cqw;cursor:pointer;white-space:nowrap}
+.opts button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.rulebox{font-size:1.05cqw;color:var(--muted);background:var(--soft);border-radius:999px;padding:.5cqw 1.1cqw}
+
+/* 시나리오 고르기 */
+.pick{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:1.4cqw;min-height:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:1.9cqw;padding:1.7cqw;display:flex;flex-direction:column;gap:.9cqw;cursor:pointer;text-align:left;color:inherit;font:inherit}
+.card:hover{border-color:var(--cool)}
+.mini{flex:1;min-height:0;display:flex;justify-content:center;align-items:center;overflow:hidden}
+.mini .car{max-width:100%;max-height:100%;height:auto;width:100%}
+.mini .car{border-width:.16cqw;border-radius:3.2cqw 3.2cqw 1.6cqw 1.6cqw;padding:2.2cqw 1cqw 1cqw;gap:.6cqw}
+.mini .row{gap:.6cqw}
+.mini .seat{border-radius:.8cqw;padding:.2cqw;justify-content:center;cursor:inherit}
+.mini .seat svg{width:2cqw;height:2cqw}
+.card .n{font-size:1.75cqw;font-weight:700}
+.card .k{font-size:1.15cqw;color:var(--muted)}
+.card .p{font-size:1.15cqw;color:var(--cool)}
+.q2{font-size:1.5cqw;color:var(--muted)}
+
+/* 주행 중 */
+.dgrid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:1.8cqw}
+.big3{border-radius:1.9cqw;border:.16cqw solid var(--line);background:color-mix(in srgb,var(--line) 16%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8cqw;text-align:center;padding:1cqw}
+.big3 b{font-size:2.6cqw}.big3 span{font-size:1.7cqw;color:var(--muted)}
+
+/* 휴대폰 보고서(미리보기) */
+.phone{position:absolute;right:2cqw;top:5.5cqw;width:21cqw;height:40cqw;background:#F4F6F8;color:#15202B;border-radius:2.4cqw;border:.6cqw solid #000;box-shadow:0 1cqw 3cqw rgba(0,0,0,.5);overflow:auto;padding:1.4cqw 1.2cqw;font-size:1cqw}
+.phone h4{margin:0;font-size:1.6cqw}.phone .m{color:#5A6774;font-size:.9cqw}
+.phone .c{background:#fff;border:1px solid #DDE3E8;border-left:.35cqw solid #B98410;border-radius:.9cqw;padding:.8cqw;margin-top:.9cqw}
+.phone .x{position:absolute;top:.6cqw;right:.9cqw;background:none;border:0;font-size:1.4cqw;cursor:pointer;color:#5A6774}
+.phone svg{width:100%;height:4cqw;display:block}
+
+.note{color:var(--muted);font-size:13px;margin:0;max-width:75ch}
+/* 앱(WebView) 안: 시안 설명·기어 버튼을 숨기고 차 화면만 꽉 채운다 */
+.app body{padding:0;background:var(--bg);height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.app .wrap{max-width:none;width:min(100vw,calc(100vh*1.9));gap:0}
+.app .top,.app .note{display:none}
+.app .screen{border:0;border-radius:0;box-shadow:none}
+.live{display:none;font-size:1.05cqw;color:var(--ok);align-items:center;gap:.5cqw}
+.live::before{content:"";width:.8cqw;height:.8cqw;border-radius:50%;background:var(--ok)}
+.app .live.on{display:inline-flex}
+.livefix{font-size:1.05cqw;color:var(--ok)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>시트룸 차 화면 시안</h1>
+      <p>Pleos 차 디스플레이 비율(1520×800). 누르면 실제로 바뀝니다. 값은 시뮬레이션이에요.</p>
+    </div>
+    <div class="ctl" role="group" aria-label="미리보기 전환">
+      <button id="gearP" aria-pressed="true">기어 P (정차)</button>
+      <button id="gearD" aria-pressed="false">기어 D (주행 중 보기)</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen">
+    <!-- 시나리오 고르기 -->
+    <section class="in" id="vPick">
+      <div class="hd"><span class="brand">시트룸</span><span class="q2">어떤 집의 차인가요?</span></div>
+      <div class="pick" id="pick"></div>
+    </section>
+
+    <!-- 메인 -->
+    <section class="in" id="vMain" hidden>
+      <div class="hd">
+        <span class="brand">시트룸</span><span class="tag">좌석마다 나만의 방</span><span class="live" id="liveTag">차 신호 연결</span><span class="sp"></span>
+        <button class="pill" id="sendReport"><svg viewBox="0 0 12 20" width="10" height="16"><rect x="1.5" y="1.5" width="9" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="15.5" r="1.2" fill="currentColor"/></svg><span id="reportLbl">휴대폰으로 보고서</span></button>
+        <button class="pill cool" id="scnBtn">시나리오</button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="rooms">방</button>
+        <button role="tab" aria-selected="false" data-tab="me">평소의 나</button>
+      </div>
+
+      <div class="view" id="tRooms">
+        <div class="carbox"><div class="car" id="car"></div></div>
+        <div class="side">
+          <div class="tile learn" id="learn"></div>
+          <div class="mini2">
+            <div class="tile"><span class="dot" id="airDot"></span><div><div class="big" id="airWord">공기 괜찮아요</div><div class="small" id="airPpm"></div></div><span class="sp"></span><button class="pill" id="recirc">내기 켜기</button><button class="btn warn sm" id="fresh" hidden>외기로</button></div>
+            <div class="tile"><span class="dot" id="restDot"></span><div><div class="big" id="restBig">평소대로</div><div class="small" id="restSmall">운전석 상태</div></div><span class="sp"></span><button class="pill" id="restBtn">창문 조작 해 보기</button></div>
+          </div>
+          <div class="legend"><span><i style="background:var(--cool)"></i>운전: 시원·편안하게</span><span><i style="background:var(--warm)"></i>휴식: 따뜻·어둡게</span><span><i style="background:#00AAD2"></i>집중: 밝게·조용히</span></div>
+        </div>
+      </div>
+
+      <div class="view" id="tMe" hidden>
+        <div class="base">
+          <div class="brow">
+            <span id="whoBox"></span><span class="sp"></span>
+            <span class="rulebox" id="ruleBox"></span>
+          </div>
+          <div class="axes" id="axes"></div>
+          <div class="lower">
+            <div class="alert" id="alert"></div>
+            <div class="trend" id="trend"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone" id="phone" hidden aria-label="휴대폰 보고서 미리보기"></div>
+    </section>
+
+    <!-- 주행 중 -->
+    <section class="in" id="vDrive" hidden>
+      <div class="hd"><span class="brand">시트룸</span><span class="q2">주행 중</span></div>
+      <div class="dgrid" id="drive"></div>
+      <button class="btn warn" id="freshD" hidden style="font-size:2cqw;padding:1.6cqw">외기로 바꾸기</button>
+    </section>
+  </div>
+
+  <p class="note">이 시안이 정해지면 같은 화면을 APK에 옮깁니다. 방법은 둘: 지금처럼 Compose로 다시 그리기, 또는 이 HTML을 앱 안 WebView로 띄우고 차 신호(SDK)를 자바스크립트 다리로 연결하기.</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SEATS = [["DRIVER","운전석"],["PASSENGER","동승석"],["REAR_LEFT","뒷좌석 왼쪽"],["REAR_RIGHT","뒷좌석 오른쪽"]];
+const AX = [
+  {k:"perf",n:"수행",q:"조향 방향 전환(분당)",u:"회/분",min:.8},
+  {k:"pos",n:"자세",q:"주행 중 자세 고침",u:"회",min:1.2},
+  {k:"vis",n:"시야 보상",q:"수동 상향등 시간",u:"분",min:.5},
+  {k:"plan",n:"계획",q:"깜빡이 → 조향 간격",u:"초",min:.4},
+];
+// 시나리오: 앱(Scenario.kt)과 같은 조건. 평소값은 가상 30일의 평균·폭.
+const SC = [
+  {id:"S1",title:"10만 km 넘은 안전운전자",kind:"가족",pitch:"아이는 자고, 알림은 꼭 필요할 때만",
+   occ:["DRIVER","PASSENGER","REAR_LEFT","REAR_RIGHT"],modes:{DRIVER:"drive",REAR_LEFT:"rest",REAR_RIGHT:"rest"},
+   owners:{DRIVER:[{name:"아빠",n:126,t:21.5,fan:3,hv:"통풍 1"}],PASSENGER:[{name:"엄마",n:84,t:23.5,fan:2,hv:"열선 1"}],
+     REAR_LEFT:[{name:"첫째",n:61,t:22,fan:2,hv:"없음"}],REAR_RIGHT:[{name:"둘째",n:7,t:23,fan:1,hv:"열선 1"}]},
+   people:[{name:"아빠",b:{perf:[10.5,.6],pos:[.6,.7],vis:[.2,.35],plan:[3.4,.25]}}],rule:{z:2,min:2,trend:false,heat:0}},
+  {id:"S2",title:"고령 운전자",kind:"개인",pitch:"작은 변화와 몇 주 추세까지",
+   occ:["DRIVER"],modes:{DRIVER:"drive"},
+   owners:{DRIVER:[{name:"어르신",n:92,t:24.5,fan:1,hv:"열선 2"}],},seen:{PASSENGER:3},
+   people:[{name:"어르신",b:{perf:[13,1.4],pos:[1.5,1.2],vis:[.9,1.1],plan:[3.0,.45]}}],rule:{z:2.3,min:1,trend:true,heat:.19}},
+  {id:"S3",title:"2인, 번갈아 운전",kind:"가족",pitch:"누가 운전했는지 자리로 알아봐요",
+   occ:["DRIVER","PASSENGER"],modes:{DRIVER:"drive"},
+   owners:{DRIVER:[{name:"지수",n:68,t:22.5,fan:2,hv:"열선 1"},{name:"민호",n:55,t:20.5,fan:3,hv:"통풍 2"}],
+     PASSENGER:[{name:"민호",n:61,t:21,fan:3,hv:"없음"},{name:"지수",n:49,t:23,fan:2,hv:"열선 1"}]},
+   people:[{name:"지수",share:.55,b:{perf:[9.5,.9],pos:[.8,.9],vis:[.3,.4],plan:[3.2,.5]}},{name:"민호",share:.45,b:{perf:[15,1.1],pos:[2,1.4],vis:[.4,.6],plan:[2.4,.5]}}],rule:{z:2,min:1,trend:false,heat:0},auto:true},
+  {id:"S4",title:"혼자 출퇴근, 오늘은 동승",kind:"개인",pitch:"평소 빈자리에 탄 사람이 손님인지 알아봐요",
+   occ:["DRIVER","PASSENGER"],modes:{DRIVER:"drive"},guestAt:["PASSENGER"],seen:{PASSENGER:2,REAR_LEFT:1},
+   owners:{DRIVER:[{name:"서연",n:143,t:22,fan:2,hv:"없음"}]},
+   people:[{name:"서연",b:{perf:[11,.8],pos:[.9,.8],vis:[.3,.4],plan:[3.1,.35]}}],rule:{z:2,min:1,trend:false,heat:0}},
+];
+// 방 모드: 운전석은 운전/휴식, 나머지 자리는 기본/휴식/집중. 값은 그 자리 주인이 배운 값에 더하는 차이.
+const MODES = {drive:["운전",-.5,"바람 그대로 · 밝기 그대로"],rest:["휴식",+1.5,"바람 1 · 조명 10%"],focus:["집중",0,"바람 1 · 조명 80%"],"":["기본",0,""]};
+const READY = 10; // 앱과 같은 기준: 10회 타야 '배웠다'고 본다
+let sc=null, modes={}, who=0, tab="rooms", ppm=430, recirc=false, restUntil=0, last=null, sent=null, driving=false, sel="DRIVER", ownerIx={}, guests={}, trendMode={};
+
+// learn: 0~1이면 사람 둘레에 '배운 정도' 고리를 그린다(10회 = 한 바퀴)
+function person(filled,color,learn){
+  const ring = learn==null ? "" :
+    `<circle cx="28" cy="28" r="26" fill="none" stroke="#E4DCD3" stroke-width="3"/>
+     <circle cx="28" cy="28" r="26" fill="none" stroke="${learn>=1?"#00AAD2":"#C9B8A6"}" stroke-width="3" pathLength="100" stroke-dasharray="${Math.round(learn*100)} 100" transform="rotate(-90 28 28)" stroke-linecap="round"/>`;
+  return filled
+    ? `<svg viewBox="0 0 56 56" aria-hidden="true">${ring}<circle cx="28" cy="19" r="7.5" fill="${color}"/><rect x="15" y="29" width="26" height="16" rx="8" fill="${color}"/></svg>`
+    : `<svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="19" r="7.5" fill="none" stroke="#857669" stroke-width="2.2" stroke-dasharray="3.5 3.5"/><rect x="15" y="29" width="26" height="16" rx="8" fill="none" stroke="#857669" stroke-width="2.2" stroke-dasharray="3.5 3.5"/></svg>`;
+}
+const colorOf = m => m==="rest" ? "#A36B4F" : m==="drive" ? "#002C5F" : m==="focus" ? "#00AAD2" : "#5E534C";
+const word = (m,occ) => occ ? MODES[m||""][0] : "빈자리";
+// 평소 빈자리에 누가 앉으면: 그 자리 이력·처음 맞춘 온도·좌석을 옮긴 정도로 손님인지 본다(자기 판단이 아니라 몸이 한 조작으로).
+function board(k){
+  if(!sc.occ.includes(k)) sc.occ.push(k);
+  const o=sc.owners[k]&&sc.owners[k][0];
+  if(o && o.n>=READY) return;                         // 주인이 있는 자리면 그 사람으로 본다
+  const known=Object.values(sc.owners).flat();
+  const t=[26,19.5,25.5,20].map(v=>[v,Math.min(...known.map(p=>Math.abs(p.t-v)))]).sort((a,b)=>b[1]-a[1])[0][0];
+  const near=known.reduce((a,p)=>Math.abs(p.t-t)<Math.abs(a.t-t)?p:a);
+  guests[k]={t, near, move:9, seen:(sc.seen&&sc.seen[k])||0, status:"judged"};
+  ppm+=40;
+}
+const isGuest = k => guests[k] && guests[k].status!=="family";
+const ownerOf = k => { const o=sc.owners[k]; return o ? o[ownerIx[k]||0] : null; };
+const fanOf = (k,m) => m==="rest"||m==="focus" ? 1 : ((isGuest(k)?null:ownerOf(k))?.fan ?? 2);
+const tempOf = (k,m) => { const o=isGuest(k)?null:ownerOf(k); return (o?o.t:22)+MODES[m||""][1]; };
+
+function carHTML(s, mini){
+  const rows=[[0,1],[2,3]].map(r=>`<div class="row">${r.map(i=>{
+    const [k,l]=SEATS[i], m=(mini?s.modes[k]:modes[k])||"", occ=s.occ.includes(k);
+    if(mini) return `<div class="seat ${m}">${person(occ,colorOf(m))}</div>`;
+    const o=ownerOf(k), g=isGuest(k);
+    const who = g ? (guests[k].status==="guest"?"손님":"손님?") : (o&&occ?o.name:"&nbsp;");
+    return `<button class="seat ${m} ${sel===k?"sel":""}" data-seat="${k}" aria-pressed="${sel===k}" aria-label="${l} ${g?"손님":o?o.name:""} ${word(m,occ)}"><span class="lb">${l}</span><span class="ow" ${g?'style="color:var(--warm)"':""}>${who}</span>${person(occ,colorOf(m),o&&occ?Math.min(1,o.n/READY):null)}<span class="md">${word(m,occ)}</span><span class="tp">${occ?tempOf(k,m).toFixed(1)+"°":"&nbsp;"}</span></button>`;
+  }).join("")}</div>`).join("");
+  return (mini?"":`<div class="front">앞</div>`)+rows+(mini?"":`<div class="hint">자리를 누르면 그 자리가 배운 것이 보여요 · 고리 = 배운 정도</div>`);
+}
+
+function renderPick(){
+  $("pick").innerHTML = SC.map((s,i)=>`<button class="card" data-i="${i}">
+    <div class="mini"><div class="car">${carHTML(s,true)}</div></div>
+    <div class="n">${s.title}</div><div class="k">${s.kind}</div><div class="p">${s.pitch}</div></button>`).join("");
+  $("pick").querySelectorAll(".card").forEach(b=>b.onclick=()=>choose(+b.dataset.i));
+}
+function choose(i){
+  sc={...SC[i], occ:[...SC[i].occ], owners:{...SC[i].owners}}; modes={...sc.modes}; who=0; sel="DRIVER"; ownerIx={}; guests={}; last=null;
+  (sc.guestAt||[]).forEach(k=>{ board(k); sel=k; }); sent=null; tab="rooms";
+  ppm=420+sc.occ.length*40; recirc=false; restUntil=0;
+  $("scnBtn").textContent = `시나리오 ${i+1} · 바꾸기`;
+  $("reportLbl").textContent="휴대폰으로 보고서"; $("phone").hidden=true;
+  show();
+}
+function show(){
+  $("vPick").hidden = !!sc || driving;
+  $("vMain").hidden = !sc || driving;
+  $("vDrive").hidden = !driving;
+  if(driving){ renderDrive(); return; }
+  if(!sc){ renderPick(); return; }
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===tab));
+  $("tRooms").hidden = tab!=="rooms"; $("tMe").hidden = tab!=="me";
+  renderRooms(); renderMe();
+}
+
+function renderRooms(){
+  $("car").innerHTML = carHTML(sc,false);
+  $("car").querySelectorAll(".seat").forEach(b=>b.onclick=()=>{ sel=b.dataset.seat; renderRooms(); });
+  renderLearn(); renderAir();
+}
+
+// 같은 사람이면 매번 같은 그림이 나오게 이름으로 씨앗을 만든다
+function rng(str){ let h=1779033703; for(const c of str) h=Math.imul(h^c.charCodeAt(0),3432918353); return ()=>{ h=Math.imul(h^h>>>16,2246822507); h=Math.imul(h^h>>>13,3266489909); return ((h^=h>>>16)>>>0)/4294967296; }; }
+// 탑승마다 그 사람이 결국 맞춘 값(온도·바람·시트)과, 탈 때 자리가 미리 맞춰 둔 값의 차이 = 직접 고친 횟수.
+// 10회 전에는 공장값(22°·바람 2·시트 끔)으로 시작하고, 10회부터는 지난 탑승에서 배운 값으로 시작한다.
+function history(o){
+  const r=rng(o.name+o.t), g=()=>{let s=0;for(let i=0;i<6;i++)s+=r();return s-3;};
+  const out=[], seen=[];
+  for(let i=0;i<o.n;i++){
+    const settled = Math.round((o.t + g()*.3)*2)/2;
+    const fan = r()<.12 ? o.fan+(r()<.5?-1:1) : o.fan;
+    const ready = i>=READY;
+    const learnedT = ready ? Math.round(seen.reduce((a,b)=>a+b,0)/seen.length*2)/2 : 22;
+    const fixes = Math.min(3,Math.abs(settled-learnedT)/.5) + (fan!==(ready?o.fan:2)?1:0) + ((ready||o.hv==="없음")?0:1);
+    out.push({fixes, ready});
+    seen.push(settled);
+  }
+  return out;
+}
+
+function renderLearn(){
+  const L=$("learn"), [, label]=SEATS.find(s=>s[0]===sel), occ=sc.occ.includes(sel), o=ownerOf(sel), m=modes[sel]||"";
+  const opts = sel==="DRIVER" ? ["drive","rest"] : ["","rest","focus"];
+  const seg = occ ? `<div class="seg" role="group" aria-label="방 모드">${opts.map(x=>`<button data-m="${x}" aria-pressed="${m===x}">${MODES[x][0]}</button>`).join("")}</div>` : "";
+  const two = sc.owners[sel] && sc.owners[sel].length>1
+    ? sc.owners[sel].map((p,i)=>`<button class="chip" aria-pressed="${(ownerIx[sel]||0)===i}" data-o="${i}">${p.name}</button>`).join(" ") : "";
+  let body, title = o&&occ ? o.name+"의 자리" : "빈자리";
+  if(occ && isGuest(sel)){
+    const g=guests[sel], c=[g.seen<READY/2, Math.abs(g.t-g.near.t)>=1.5, g.move>=6], score=c.filter(Boolean).length;
+    title = g.status==="guest" ? "손님 자리" : score>=3 ? "손님으로 보여요" : score==2 ? "손님일 수도 있어요" : "아는 사람 같아요";
+    const row=(ok,a,b)=>`<div><i class="${ok?"":"no"}">${ok?"✓":"–"}</i>${a}<span>${b}</span></div>`;
+    body = `
+      <div class="why">
+        ${row(c[0],`지난 30일 이 자리 탑승 <b>&nbsp;${g.seen}회</b>`,"주인 없는 자리")}
+        ${row(c[1],`처음 맞춘 온도 <b>&nbsp;${g.t.toFixed(1)}°</b>`,`가장 가까운 ${g.near.name}도 ${g.near.t.toFixed(1)}°`)}
+        ${row(c[2],`좌석을 앞뒤로 <b>&nbsp;${g.move}cm</b> 옮김`,"처음 앉는 사람의 자세 맞춤")}
+      </div>
+      <div class="prefs">
+        <div class="pf"><b>${(22+MODES[m][1]).toFixed(1)}°</b><span>공장값${m?" + "+MODES[m][0]:""}</span></div>
+        <div class="pf"><b>바람 ${m==="rest"||m==="focus"?1:2}</b><span>공장값</span></div>
+        <div class="pf"><b>기록 안 함</b><span>가족 평소값에 안 섞음</span></div>
+      </div>
+      ${g.status==="guest"
+        ? `<div class="verdict">이번 탑승만 맞춰 드려요. 내리면 이 자리 조작 기록은 지워요.</div>`
+        : `<div class="acts"><button class="btn gold" id="gYes">손님 맞아요</button><button class="btn line" id="gNo">가족이에요 · 배우기 시작</button></div>`}`;
+  } else if(!occ || !o){
+    const seen=(sc.seen&&sc.seen[sel])||0;
+    body = `<div class="empty">${person(false)}<div>${o?`비어 있어요 · 주로 <b style="color:var(--ink)">${o.name}</b>의 자리`:`아직 이 자리를 자주 쓰는 사람이 없어요 · 30일 ${seen}회`}</div>
+      ${!occ?`<button class="btn line" id="boardBtn" style="margin-top:.6cqw">누가 탔다 (시뮬레이션)</button>`:""}</div>`;
+  } else {
+    const h=history(o), ready=o.n>=READY, cur=o.t;
+    const W=300, H=96, px=6, top=12, maxF=5, bw=(W-2*px)/Math.max(h.length,READY+2);
+    const bars=h.map((d,i)=>`<rect x="${(px+i*bw+bw*.15).toFixed(1)}" y="${(H-6-d.fixes/maxF*(H-6-top)).toFixed(1)}" width="${(bw*.7).toFixed(1)}" height="${(d.fixes/maxF*(H-6-top)).toFixed(1)}" rx="${Math.min(1.5,bw*.3).toFixed(1)}" fill="${d.ready?"#00AAD2":"#C9B8A6"}"/>`).join("");
+    const xr=px+READY*bw;
+    const avg=a=>a.reduce((s,d)=>s+d.fixes,0)/Math.max(1,a.length);
+    const early=avg(h.slice(0,READY)), late=avg(h.slice(-10));
+    const mode = MODES[m];
+    body = `
+      <div class="prefs">
+        <div class="pf"><b>${(cur+mode[1]).toFixed(1)}°</b><span>${m?`${ready?"배운":"지금까지"} ${cur.toFixed(1)}° ${mode[1]>0?"+":""}${mode[1]?mode[1]+"°":""} ${mode[0]}`:(ready?"배운 온도":"지금까지 평균")}</span></div>
+        <div class="pf"><b>바람 ${m==="rest"||m==="focus"?1:o.fan}</b><span>${m==="rest"||m==="focus"?mode[0]+"이라 약하게":"배운 세기"}</span></div>
+        <div class="pf"><b>${o.hv}</b><span>${ready?"배운 시트":"지금까지"}</span></div>
+      </div>
+      <div class="lc">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="탑승마다 ${o.name}이(가) 직접 고친 횟수. ${READY}회부터 자리가 먼저 맞추면서 줄어듦">
+          <line x1="${px}" x2="${W-px}" y1="${H-6}" y2="${H-6}" stroke="#E4DCD3"/>
+          ${bars}
+          <line x1="${xr}" x2="${xr}" y1="4" y2="${H-6}" stroke="#5E534C" stroke-opacity=".5" stroke-dasharray="3 3"/>
+        </svg>
+        <div class="cap"><span><i style="background:#C9B8A6"></i>처음 ${READY}회: 공장값에서 직접 고침</span><span><i style="background:#00AAD2"></i>그 뒤: 자리가 먼저 맞춤</span><span class="sp"></span><span>탑승 ${o.n}회</span></div>
+      </div>
+      <div class="fix">${ready
+        ? `탈 때마다 직접 고친 횟수 <b>${early.toFixed(1)}회</b> → 요즘 <b class="ok">${late.toFixed(1)}회</b>`
+        : `<b style="color:var(--warm)">배우는 중 ${o.n}/${READY}회</b> 몇 번 더 타면 자리가 먼저 맞춰요`}</div>
+      ${car&&car.fixes&&car.fixes[sel]!=null?`<div class="livefix">● 이번 탑승(차 신호): 직접 고친 ${car.fixes[sel]}회</div>`:""}`;
+  }
+  L.innerHTML = `<div class="lh"><div><div class="sl">${label}${sc.auto&&sel!=="REAR_LEFT"&&sel!=="REAR_RIGHT"&&two?" · 좌석 위치로 알아봄":""}</div><div class="nm">${title}</div></div>${two}<span class="sp"></span>${seg}</div>${body}`;
+  L.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{ modes[sel]=b.dataset.m; toCar("setMode", sel, modes[sel], tempOf(sel,modes[sel]), fanOf(sel,modes[sel])); renderRooms(); });
+  if($("boardBtn")) $("boardBtn").onclick=()=>{ board(sel); renderRooms(); };
+  if($("gYes")) $("gYes").onclick=()=>{ guests[sel].status="guest"; renderRooms(); };
+  if($("gNo")) $("gNo").onclick=()=>{ const g=guests[sel]; g.status="family"; sc.owners[sel]=[{name:"새 가족",n:1,t:g.t,fan:2,hv:"없음"}]; renderRooms(); };
+  L.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ ownerIx[sel]=+b.dataset.o; if(sc.auto){ const other=sel==="DRIVER"?"PASSENGER":"DRIVER"; ownerIx[other]=1-ownerIx[sel]; } renderRooms(); });
+}
+
+// 1초마다 바뀌는 부분만 다시 그린다(좌석 버튼은 그대로 둬서 누르는 중에 사라지지 않게)
+function renderAir(){
+  const high = ppm>=1500;
+  $("airDot").style.background = high?"var(--warn)":"var(--ok)";
+  $("airWord").textContent = high?"공기 답답해요":"공기 괜찮아요";
+  $("airPpm").textContent = `CO₂ 추정 ${Math.round(ppm).toLocaleString()} · ${sc.occ.length}명 · ${recirc?"내기":"외기"}`;
+  $("fresh").hidden = !(high && recirc);
+  $("recirc").hidden = high && recirc;
+  $("recirc").textContent = recirc ? "내기 끄기" : "내기 켜기";
+  const rest = Date.now()<restUntil;
+  $("restDot").style.background = rest?"var(--warn)":"var(--ok)";
+  $("restBig").textContent = rest?"쉬어 가세요":"평소대로";
+  $("restSmall").textContent = rest?"졸음을 이기려는 조작이 있었어요":"운전석 상태";
+}
+
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function renderMe(){
+  const people = sc.people;
+  $("whoBox").innerHTML = people.length>1
+    ? people.map((p,i)=>`<button class="chip" aria-pressed="${i===who}" data-i="${i}">${p.name}</button>`).join(" ")
+    : `<span class="who">${people[0].name}</span>`;
+  $("whoBox").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{who=+b.dataset.i;last=null;sent=null;renderMe();});
+  const p = people[who];
+  $("axes").innerHTML = AX.map(a=>{
+    const [m,sd0]=p.b[a.k], sd=Math.max(a.min,sd0), z=sc.rule.z;
+    const today = last ? last.v[a.k] : null;
+    const zz = today==null?null:(today-m)/sd, ch = zz!=null && Math.abs(zz)>=z;
+    const X=v=>Math.max(4,Math.min(196,100+(v-m)/(4*sd)*96));
+    const col = today==null?"#857669":ch?"#A36B4F":"#00AAD2";
+    return `<div class="ax ${ch?"changed":""}"><div class="n">${a.n}</div>
+      <svg viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="4" y1="20" x2="196" y2="20" stroke="#EFE9E3" stroke-width="6" stroke-linecap="round"/>
+        <line x1="${X(m-z*sd)}" y1="20" x2="${X(m+z*sd)}" y2="20" stroke="#00AAD2" stroke-opacity=".45" stroke-width="14" stroke-linecap="round"/>
+        <line x1="100" y1="8" x2="100" y2="32" stroke="#5E534C" stroke-width="2.5"/>
+        ${today==null?"":`<circle cx="${X(today)}" cy="20" r="8" fill="${col}"/>`}
+      </svg>
+      <div class="st" style="color:${col}">${today==null?"오늘 기록 없음":ch?"달라요":"평소"}</div>
+      <div class="q">${a.q}</div></div>`;
+  }).join("");
+  const al=$("alert");
+  const bell = f=>`<svg viewBox="0 0 34 34" aria-hidden="true"><path d="M7 24.5C8.5 20.4 7.5 6 17 5.1 26.5 6 25.5 20.4 27 24.5Z" fill="${f?"#A36B4F":"none"}" stroke="${f?"#A36B4F":"#857669"}" stroke-width="2.4"/><circle cx="17" cy="28.5" r="2.7" fill="${f?"#A36B4F":"#857669"}"/></svg>`;
+  const opts = [["평소 같은 날",0],["한 가지만 다른 날",1],["여러 가지 다른 날",2]]
+    .map(([t,k])=>`<button data-k="${k}" aria-pressed="${last&&last.kind===k}">${t}</button>`).join("");
+  $("ruleBox").textContent = "이 집의 알림 규칙: " + ruleText();
+  if(!last){
+    al.className="alert"; al.innerHTML=`<div class="h">${bell(false)}오늘 어떤 날이었나요?</div><div class="f">하나를 고르면 그런 운전을 만들어 위 네 칸에 찍고, 이 집 규칙으로 알림을 보낼지 정해요</div><div class="opts">${opts}</div>`;
+  } else {
+    const tags = last.changed.map(n=>`<span class="tg w">${n}</span>`).join("") + (last.heat?`<span class="tg w">열 감각</span>`:"");
+    const whoTag = sc.auto ? `<span class="tg c">${p.name} ✓ 자리로 구분</span>` : "";
+    const title = (last.kind==="live"?"실제 주행 · ":"") + (last.sent ? "알림을 보냈어요" : last.changed.length ? "알림 안 보냄 · 규칙에 못 미침" : "알림 없음 · 평소 범위");
+    const why = last.sent ? (last.changed.length>=sc.rule.min ? `달라진 축 ${last.changed.length}개 ≥ 기준 ${sc.rule.min}개` : "더위에 반응이 없었어요")
+      : last.changed.length ? `달라진 축 ${last.changed.length}개 < 기준 ${sc.rule.min}개 → 휴대폰 보고서에만 남김` : "네 칸 모두 평소 띠 안";
+    al.className = "alert " + (last.sent?"sent":"calm");
+    al.innerHTML = `<div class="h">${bell(last.sent)}${title}</div><div class="tags">${whoTag}${tags}</div><div class="f">${why}</div><div class="opts">${opts}</div>`;
+  }
+  al.querySelectorAll(".opts button").forEach(b=>b.onclick=()=>simulate(+b.dataset.k));
+
+  // 몇 주 추세: 모든 시나리오에서 계산해서 보여 주고, 알림을 보낼지만 시나리오마다 다르다
+  const tr=$("trend"), tk=sc.id+p.name, tm=trendMode[tk] ?? (sc.rule.trend?"drift":"steady");
+  const wk=weekly(p, tm), ax=AX[3], [m,sd0]=p.b.plan, sd=Math.max(ax.min,sd0)*.5;
+  const lo=m-4*sd, hi=m+2.2*sd, W=200, H=60, X=i=>8+i*(W-16)/(wk.length-1), Y=v=>H-4-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*(H-8);
+  const drift = tm==="drift";
+  tr.innerHTML = `<div class="t">몇 주 추세 · ${p.name}</div>
+    <div class="v" style="color:${drift?"var(--diff)":"var(--ok)"}">${drift?"↘ 계획 축이 몇 주째 짧아짐":"몇 주째 평소와 같아요"}</div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 8주 ${ax.q} 주별 평균">
+      <rect x="4" y="${Y(m+sd)}" width="${W-8}" height="${Y(m-sd)-Y(m+sd)}" fill="#00AAD2" opacity=".14" rx="3"/>
+      <polyline points="${wk.map((v,i)=>`${X(i)},${Y(v)}`).join(" ")}" fill="none" stroke="#5E534C" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+      ${wk.map((v,i)=>`<circle cx="${X(i)}" cy="${Y(v)}" r="2.6" fill="${i>=4&&drift?"#A36B4F":"#5E534C"}"/>`).join("")}
+    </svg>
+    <div style="color:var(--muted);font-size:1cqw">${ax.q} · 주별 평균 8주 · ${drift?(sc.rule.trend?"<b style='color:var(--diff)'>알림 보냄</b>":"알림 없이 휴대폰 보고서에만"):"띠 = 평소 범위"}</div>
+    <div class="opts"><button data-t="steady" aria-pressed="${!drift}">몇 주째 그대로</button><button data-t="drift" aria-pressed="${drift}">서서히 변함</button></div>`;
+  tr.querySelectorAll(".opts button").forEach(b=>b.onclick=()=>{ trendMode[tk]=b.dataset.t; if(b.dataset.t==="drift"&&sc.rule.trend) toCar("notify","trend","몇 주 추세","계획"); renderMe(); });
+}
+// 8주 주별 평균. 서서히 변함이면 뒤 4주가 조금씩 짧아진다(하루 알림 기준엔 안 걸리는 크기).
+function weekly(p, mode){
+  const r=rng(p.name+mode), [m,sd0]=p.b.plan, sd=Math.max(.4,sd0);
+  return Array.from({length:8},(_,i)=>m+(r()-.5)*sd*.5-(mode==="drift"&&i>=4?(i-3)*sd*.45:0));
+}
+function ruleText(){ const r=sc.rule; return (r.min>1 ? `축 ${r.min}개 이상 함께 달라질 때` : `축 1개라도 달라지면`) + (r.heat?" · 더위 무반응":"") + (r.trend?" · 몇 주 추세":""); }
+
+function simulate(kind){
+  if(sc.auto){ who = Math.random()<sc.people[0].share?0:1; ownerIx={DRIVER:who,PASSENGER:1-who}; }
+  const p=sc.people[who], v={};
+  const shift={perf:3.4,pos:4,vis:4.5,plan:-3.4}, one=AX[Math.floor(Math.random()*4)].k;
+  AX.forEach(a=>{ const [m,sd0]=p.b[a.k], sd=Math.max(a.min,sd0), moved = kind===2 || (kind===1 && a.k===one);
+    v[a.k] = m + sd*(moved ? shift[a.k]+gauss()*.4 : gauss()*.6); if(a.k!=="plan") v[a.k]=Math.max(0,v[a.k]); });
+  const changed = AX.filter(a=>{const [m,sd0]=p.b[a.k];return Math.abs((v[a.k]-m)/Math.max(a.min,sd0))>=sc.rule.z;}).map(a=>a.n);
+  const heat = sc.rule.heat>0 && kind===2;
+  last={kind,v,changed,heat,sent: changed.length>=sc.rule.min || heat};
+  if(last.sent) toCar("notify","today","오늘 운전이 평소와 조금 달랐어요",changed.concat(heat?["열 감각"]:[]).join(","));
+  renderMe();
+}
+
+function renderDrive(){
+  if(sc && modes.DRIVER==="rest") modes.DRIVER="drive"; // 휴식(눕기)은 정차 중에만
+  const sleeping = sc ? Object.entries(modes).filter(([k,m])=>m==="rest"&&k!=="DRIVER"&&sc.occ.includes(k)).length : 0;
+  const high = ppm>=1500, rest=Date.now()<restUntil;
+  const t=(c,b,s)=>`<div class="big3" style="border-color:${c};background:color-mix(in srgb,${c} 16%,transparent)"><b>${b}</b>${s?`<span>${s}</span>`:""}</div>`;
+  $("drive").innerHTML = t(sleeping?"var(--warm)":"var(--line)", sleeping?`${sleeping}명 쉬는 중`:"쉬는 사람 없음", sleeping?"부드럽게":"")
+    + t(high?"var(--warn)":"var(--ok)", high?"공기 답답함":"공기 괜찮음", "")
+    + t(rest?"var(--warn)":"var(--line)", rest?"쉬어 가세요":"평소대로", "");
+  $("freshD").hidden = !(high && recirc);
+}
+
+function report(){
+  const p = sc.people[who];
+  const spark = Array.from({length:24},(_,i)=>p.b.plan[0]+gauss()*p.b.plan[1]*.8-((trendMode[sc.id+p.name] ?? (sc.rule.trend?"drift":"steady"))==="drift"&&i>16?(i-16)*.06:0));
+  const pts = spark.map((y,i)=>`${4+i*8},${36-(y-1.5)*12}`).join(" ");
+  $("phone").innerHTML = `<button class="x" aria-label="닫기">×</button><h4>시트룸 보고서</h4><div class="m">${sc.kind} · ${sc.title}</div>
+    <div class="c"><b>${last?(last.sent?"알림 보냄":"알림 없음"):"오늘 주행 없음"}</b><div class="m">${last?last.changed.concat(last.heat?["열 감각"]:[]).join(" · ")||"평소 범위":"시뮬레이션 전"}</div></div>
+    <div class="c" style="border-left-color:#1D8CB0"><b>${p.name} · 계획 축</b><svg viewBox="0 0 196 44"><rect x="4" y="10" width="188" height="18" fill="#1D8CB0" opacity=".13"/><polyline points="${pts}" fill="none" stroke="#15202B" stroke-width="1.5"/></svg><div class="m">점선 띠 = 평소 범위, 30일 주행</div></div>
+    <div class="c" style="border-left-color:#7FAAD3"><b>자리별로 배운 것</b><div class="m">${Object.keys(sc.owners).filter(k=>sc.occ.includes(k)).map(k=>{const o=ownerOf(k);return `${o.name} ${o.t}° · 바람 ${o.fan} · ${o.hv} (${o.n}회)`;}).join("<br>")}</div></div>
+    <div class="c" style="border-left-color:#2C8A57"><b>방에서 읽은 신호</b><div class="m">승하차 · 열 감각 · 귀가 전 머무름 · 공조 다툼</div></div>
+    <div class="m" style="margin-top:1cqw">주행 목록 30회, 4축 그래프, 안 되는 신호 목록이 이어져요.</div>`;
+  $("phone").hidden=false;
+  $("phone").querySelector(".x").onclick=()=>$("phone").hidden=true;
+  $("reportLbl").textContent = "보냄 " + new Date().toTimeString().slice(0,5);
+}
+
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;show();});
+$("scnBtn").onclick=()=>{sc=null;show();};
+// ---------- 앱(WebView) 다리: 차 신호(Pleos SDK)를 받아 화면에 섞는다 ----------
+// 앱 밖(브라우저)에서는 window.Android가 없으니 지금처럼 시뮬레이션만 돈다.
+const APP = !!window.Android;
+if(APP) document.documentElement.classList.add("app");
+function toCar(fn,...a){ try{ if(APP && window.Android[fn]) window.Android[fn](...a.map(x=>typeof x==="number"?x:String(x))); }catch(e){} }
+let car=null, prevOcc=null, lastTripT=0, liveKey="";
+window.onCar = j => {
+  car = j; $("liveTag").classList.add("on");
+  // 기어: D·R이거나 주행 제한이 걸리면 주행 화면
+  if(j.gear){ const d = !!(j.driving||j.restricted); if(d!==driving){ driving=d; show(); } }
+  if(!sc) return;
+  let redraw=false;
+  // 탑승: 처음 값은 기억만 하고, 바뀌는 순간(앉음/내림)에만 반영한다
+  if(prevOcc){ SEATS.forEach(([k])=>{ const now=j.occ[k], was=prevOcc[k]; if(now==null||was==null||now===was) return;
+      if(now){ board(k); sel=k; } else { sc.occ=sc.occ.filter(x=>x!==k); if(isGuest(k)) delete guests[k]; }
+      redraw=true; }); }
+  prevOcc = {...j.occ};
+  if(j.recirc!=null && j.recirc!==recirc){ recirc=j.recirc; }
+  if(j.restLeftMs>0) restUntil = Date.now()+j.restLeftMs;
+  // 주행이 끝나면(D → P) 그 주행의 4축 값을 이 사람 평소와 비교
+  if(j.trip && j.trip.t!==lastTripT){
+    const first = lastTripT===0; lastTripT=j.trip.t;
+    if(!first){ const p=sc.people[who], v=j.trip.v;
+      const changed = AX.filter(a=>{ if(v[a.k]==null) return false; const [m,sd0]=p.b[a.k]; return Math.abs((v[a.k]-m)/Math.max(a.min,sd0))>=sc.rule.z; }).map(a=>a.n);
+      last={kind:"live",v,changed,heat:false,sent:changed.length>=sc.rule.min,minutes:j.trip.minutes};
+      if(last.sent) toCar("notify","today","오늘 운전이 평소와 조금 달랐어요",changed.join(","));
+      tab="me"; redraw=true; }
+  }
+  const k2 = JSON.stringify([j.fixes, j.recirc]);
+  if(k2!==liveKey){ liveKey=k2; if(!redraw && !driving && tab==="rooms"){ renderLearn(); renderAir(); } }
+  if(redraw) show();
+};
+
+$("recirc").onclick=()=>{recirc=!recirc;toCar("setRecirc",recirc);renderAir();};
+$("fresh").onclick=$("freshD").onclick=()=>{recirc=false;toCar("setRecirc",false);show();};
+$("restBtn").onclick=()=>{restUntil=Date.now()+15*60000;renderAir();};
+$("sendReport").onclick=()=>{ report(); toCar("sendReport"); };
+$("gearD").onclick=()=>{ if(!sc) choose(0); driving=true; $("gearD").setAttribute("aria-pressed",true); $("gearP").setAttribute("aria-pressed",false); show(); };
+$("gearP").onclick=()=>{ driving=false; $("gearP").setAttribute("aria-pressed",true); $("gearD").setAttribute("aria-pressed",false); show(); };
+// CO₂: 내기 순환이면 사람 수만큼 오르고, 외기면 바깥 공기 쪽으로 내려간다(시연용으로 빠르게)
+setInterval(()=>{ if(!sc) return; const n=sc.occ.length;
+  ppm += recirc ? n*16 : -(ppm-420)*0.15; ppm=Math.max(420,Math.min(3000,ppm));
+  if(driving) renderDrive(); else if(tab==="rooms") renderAir(); }, 1000);
+show();
+</script>

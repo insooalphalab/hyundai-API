@@ -1,0 +1,1760 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>시트룸 차량 디스플레이</title>
+  <!-- 온라인 및 오프라인 모두 대응 가능한 Pretendard 웹폰트 -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <style>
+    @font-face {
+      font-family: "Pretendard Variable";
+      font-weight: 45 920;
+      font-display: swap;
+      src: url("fonts/PretendardVariable.woff2") format("woff2");
+    }
+
+    /* -------------------------------------------------------------
+       현대자동차 공식 전용색상 & 다크/라이트 듀얼 테마
+    ------------------------------------------------------------- */
+    :root {
+      /* 다크 테마 (ccNC 인포테인먼트 스타일) */
+      --bg-core: #0c0e12;
+      --bg-panel: rgba(26, 30, 38, 0.85);
+      --bg-card: rgba(35, 41, 52, 0.7);
+      --bg-soft: rgba(255, 255, 255, 0.06);
+      
+      --line-subtle: rgba(228, 220, 211, 0.14); /* Hyundai Sand 반투명 */
+      --line-accent: rgba(170, 202, 230, 0.35); /* Sky Blue */
+
+      --text-main: #F6F3F2;   /* Hyundai Light Sand */
+      --text-muted: #A36B4F;  /* Hyundai Gold */
+      --text-dim: #9aa0a6;
+
+      --c-h-blue: #002C5F;    /* Hyundai Blue */
+      --c-h-gold: #A36B4F;    /* Hyundai Gold */
+      --c-act-blue: #00AAD2;  /* Active Blue */
+      --c-sky-blue: #AACAE6;  /* Sky Blue */
+      --c-act-red: #E63312;   /* Active Red */
+      --c-sand: #E4DCD3;      /* Hyundai Sand */
+
+      --st-drive: #00AAD2;
+      --st-rest: #A36B4F;
+      --st-focus: #AACAE6;
+      --st-warn: #E63312;
+      --st-ok: #00AAD2;
+
+      --glass-blur: blur(20px);
+      --screen-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      color-scheme: dark;
+    }
+
+    [data-theme="light-sand"] {
+      /* 라이트 테마 (현대 샌드 라운지 톤) */
+      --bg-core: #F6F3F2;     /* Hyundai Light Sand */
+      --bg-panel: #FFFFFF;
+      --bg-card: rgba(255, 255, 255, 0.9);
+      --bg-soft: #EFE9E3;
+
+      --line-subtle: rgba(228, 220, 211, 0.75);
+      --line-accent: rgba(0, 44, 95, 0.25);
+
+      --text-main: #1D1917;
+      --text-muted: #7E6B5D;
+      --text-dim: #8C7B6E;
+
+      --st-drive: #002C5F;
+      --st-rest: #A36B4F;
+      --st-focus: #00AAD2;
+      --st-warn: #E63312;
+      --st-ok: #00AAD2;
+
+      --glass-blur: blur(12px);
+      --screen-shadow: 0 20px 48px rgba(163, 107, 79, 0.15), inset 0 1px 0 #ffffff;
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      background: #06080a;
+      color: var(--text-main);
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      letter-spacing: -0.02em;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      padding: 12px 16px 24px;
+      user-select: none;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    [data-theme="light-sand"] body { background: #ded5cb; }
+
+    .wrap {
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    /* 상단 컨트롤 바 */
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 2px 6px;
+    }
+    .top-titles h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 2px;
+      color: #F6F3F2;
+      letter-spacing: -0.025em;
+    }
+    [data-theme="light-sand"] .top-titles h1 { color: #2B2522; }
+    .top-titles p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .ctl-btn {
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      background: var(--bg-soft);
+      border: 1px solid var(--line-subtle);
+      border-radius: 999px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .ctl-btn:hover {
+      border-color: var(--line-accent);
+      transform: translateY(-1px);
+    }
+    .ctl-btn[aria-pressed="true"] {
+      background: var(--c-act-blue);
+      color: #fff;
+      border-color: var(--c-act-blue);
+      box-shadow: 0 3px 12px rgba(0, 170, 210, 0.35);
+    }
+
+    /* -------------------------------------------------------------
+       스크린 레이아웃 (반응형 뷰포트 맞춤 + 비율 가드)
+    ------------------------------------------------------------- */
+    .screen {
+      /* 폭(cqw)과 높이(cqh) 컨테이너 쿼리 지원 */
+      container-type: size;
+      width: 100%;
+      height: clamp(560px, calc(100vh - 76px), 880px);
+      background: radial-gradient(circle at 50% 6%, #1a2332 0%, var(--bg-core) 90%);
+      border-radius: 22px;
+      border: 1px solid var(--line-subtle);
+      box-shadow: var(--screen-shadow);
+      overflow: hidden;
+      position: relative;
+      transition: background 0.35s ease;
+    }
+    [data-theme="light-sand"] .screen {
+      background: radial-gradient(circle at 50% 0%, #FFFFFF 0%, var(--bg-core) 100%);
+    }
+
+    .in {
+      position: absolute;
+      inset: 0;
+      padding: clamp(16px, 2.2cqh, 24px) clamp(20px, 2.4cqw, 32px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1.6cqh, 16px);
+    }
+
+    /* 공통 헤더 */
+    .hd {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .brand {
+      font-size: clamp(20px, 2.5cqw, 30px);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      color: var(--text-main);
+      background: linear-gradient(135deg, #FFFFFF 30%, var(--c-sky-blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    [data-theme="light-sand"] .brand {
+      background: linear-gradient(135deg, var(--c-h-blue) 0%, var(--c-act-blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tag {
+      font-size: clamp(13px, 1.3cqw, 16px);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .live-badge {
+      display: none;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--c-act-blue);
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 170, 210, 0.12);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+    .live-badge::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--c-act-blue);
+      box-shadow: 0 0 8px var(--c-act-blue);
+    }
+    .live-badge.on { display: inline-flex; }
+
+    .sp { flex: 1; }
+
+    .pill {
+      font: inherit;
+      font-size: clamp(12px, 1.2cqw, 15px);
+      font-weight: 600;
+      color: var(--text-main);
+      background: var(--bg-soft);
+      border: 1px solid var(--line-subtle);
+      border-radius: 999px;
+      padding: 6px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .pill:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--line-accent);
+      transform: translateY(-1px);
+    }
+    .pill:active { transform: scale(0.96); }
+    .pill.cool {
+      border-color: var(--c-act-blue);
+      color: var(--c-act-blue);
+      background: rgba(0, 170, 210, 0.08);
+    }
+
+    /* 상단 탭 네비게이션 */
+    .tabs {
+      display: flex;
+      border-bottom: 1.5px solid var(--line-subtle);
+      gap: 24px;
+      flex-shrink: 0;
+    }
+    .tabs button {
+      font: inherit;
+      font-size: clamp(15px, 1.6cqw, 19px);
+      font-weight: 700;
+      color: var(--text-dim);
+      background: none;
+      border: 0;
+      padding: 8px 4px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .tabs button[aria-selected="true"] {
+      color: var(--text-main);
+      border-bottom-color: var(--c-act-blue);
+    }
+    [data-theme="light-sand"] .tabs button[aria-selected="true"] {
+      border-bottom-color: var(--c-h-blue);
+      color: var(--c-h-blue);
+    }
+
+    .view {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      gap: clamp(14px, 1.8cqw, 24px);
+    }
+    [hidden] { display: none !important; }
+
+    /* -------------------------------------------------------------
+       좌측 차량 콕핏 및 좌석 (비율 붕괴 방지)
+    ------------------------------------------------------------- */
+    .carbox {
+      flex: 1.1;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      min-height: 0;
+      height: 100%;
+    }
+    .car {
+      height: 100%;
+      width: 100%;
+      max-width: 460px;
+      border: 2px solid var(--line-subtle);
+      border-radius: 54px 54px 34px 34px;
+      padding: clamp(14px, 2.4cqh, 24px) clamp(14px, 2cqw, 20px) clamp(10px, 1.8cqh, 16px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(8px, 1.4cqh, 14px);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.05) 100%);
+      box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.4);
+    }
+    [data-theme="light-sand"] .car {
+      background: linear-gradient(180deg, rgba(228, 220, 211, 0.25) 0%, rgba(228, 220, 211, 0.5) 100%);
+      box-shadow: inset 0 0 20px rgba(163, 107, 79, 0.08);
+    }
+    .front {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .row {
+      flex: 1;
+      display: flex;
+      gap: clamp(10px, 1.5cqw, 14px);
+      min-height: 0;
+    }
+
+    /* 좌석 컴포넌트 */
+    .seat {
+      flex: 1;
+      border-radius: 20px;
+      border: 1.5px solid var(--line-subtle);
+      background: var(--bg-card);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: clamp(8px, 1.5cqh, 14px) clamp(4px, 0.8cqw, 10px);
+      cursor: pointer;
+      color: inherit;
+      font: inherit;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    }
+    .seat:hover {
+      border-color: var(--line-accent);
+      transform: translateY(-2px);
+    }
+    .seat:active { transform: scale(0.96); }
+
+    .seat .lb {
+      font-size: clamp(12px, 1.15cqw, 14px);
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+    .seat .ow {
+      font-size: clamp(14px, 1.45cqw, 18px);
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .seat .md {
+      font-size: clamp(18px, 2cqw, 24px);
+      font-weight: 800;
+      color: var(--text-dim);
+      letter-spacing: -0.02em;
+    }
+    .seat .tp {
+      font-size: clamp(13px, 1.3cqw, 16px);
+      font-weight: 700;
+      font-feature-settings: "tnum";
+      color: var(--text-muted);
+    }
+    .seat svg {
+      width: clamp(38px, 4.8cqw, 56px);
+      height: clamp(38px, 4.8cqw, 56px);
+      max-height: 38%;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+    }
+
+    /* 좌석 상태별 스타일 */
+    .seat.drive {
+      border-color: var(--c-act-blue);
+      background: radial-gradient(circle at 50% 40%, rgba(0, 170, 210, 0.25) 0%, rgba(26, 30, 38, 0.92) 100%);
+      box-shadow: 0 0 22px rgba(0, 170, 210, 0.3);
+    }
+    .seat.drive .md { color: #fff; }
+    [data-theme="light-sand"] .seat.drive {
+      border-color: var(--c-h-blue);
+      background: linear-gradient(180deg, #FFFFFF 0%, rgba(170, 202, 230, 0.45) 100%);
+      box-shadow: 0 8px 20px rgba(0, 44, 95, 0.2);
+    }
+    [data-theme="light-sand"] .seat.drive .md { color: var(--c-h-blue); }
+
+    .seat.rest {
+      border-color: var(--c-h-gold);
+      background: radial-gradient(circle at 50% 40%, rgba(163, 107, 79, 0.28) 0%, rgba(26, 30, 38, 0.92) 100%);
+      box-shadow: 0 0 22px rgba(163, 107, 79, 0.3);
+    }
+    .seat.rest .md { color: #fff; }
+    [data-theme="light-sand"] .seat.rest {
+      border-color: var(--c-h-gold);
+      background: linear-gradient(180deg, #FFFFFF 0%, rgba(163, 107, 79, 0.3) 100%);
+      box-shadow: 0 8px 20px rgba(163, 107, 79, 0.2);
+    }
+    [data-theme="light-sand"] .seat.rest .md { color: var(--c-h-gold); }
+
+    .seat.focus {
+      border-color: var(--c-sky-blue);
+      background: radial-gradient(circle at 50% 40%, rgba(170, 202, 230, 0.25) 0%, rgba(26, 30, 38, 0.92) 100%);
+      box-shadow: 0 0 22px rgba(170, 202, 230, 0.3);
+    }
+    .seat.focus .md { color: #fff; }
+    [data-theme="light-sand"] .seat.focus {
+      border-color: var(--c-act-blue);
+      background: linear-gradient(180deg, #FFFFFF 0%, rgba(0, 170, 210, 0.25) 100%);
+      box-shadow: 0 8px 20px rgba(0, 170, 210, 0.2);
+    }
+    [data-theme="light-sand"] .seat.focus .md { color: var(--c-act-blue); }
+
+    .seat.sel {
+      box-shadow: 0 0 0 2.5px #fff, 0 0 28px rgba(255, 255, 255, 0.45) !important;
+    }
+    [data-theme="light-sand"] .seat.sel {
+      box-shadow: 0 0 0 2.5px var(--c-h-blue), 0 0 24px rgba(0, 44, 95, 0.35) !important;
+    }
+
+    .hint {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 12px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    /* -------------------------------------------------------------
+       우측 패널 및 맞춤 정보 타일
+    ------------------------------------------------------------- */
+    .side {
+      flex: 1.35;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1.4cqh, 14px);
+      min-height: 0;
+      height: 100%;
+    }
+    .tile {
+      background: var(--bg-panel);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border-radius: 20px;
+      border: 1px solid var(--line-subtle);
+      padding: clamp(12px, 1.8cqh, 20px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+    [data-theme="light-sand"] .tile {
+      box-shadow: 0 8px 22px rgba(163, 107, 79, 0.1);
+    }
+
+    .learn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(8px, 1.3cqh, 14px);
+      min-height: 0;
+      overflow: hidden;
+    }
+    .lh {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .lh .nm {
+      font-size: clamp(18px, 2.1cqw, 24px);
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.03em;
+    }
+    .lh .sl {
+      font-size: clamp(12px, 1.2cqw, 14px);
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .seg {
+      display: flex;
+      background: var(--bg-soft);
+      border: 1px solid var(--line-subtle);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .seg button {
+      white-space: nowrap;
+      font: inherit;
+      font-size: clamp(12px, 1.25cqw, 15px);
+      font-weight: 600;
+      color: var(--text-dim);
+      background: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .seg button[aria-pressed="true"] { color: #fff; }
+    .seg button[data-m="drive"][aria-pressed="true"] {
+      background: var(--c-act-blue);
+      box-shadow: 0 2px 10px rgba(0, 170, 210, 0.4);
+    }
+    [data-theme="light-sand"] .seg button[data-m="drive"][aria-pressed="true"] {
+      background: var(--c-h-blue);
+    }
+    .seg button[data-m="rest"][aria-pressed="true"] {
+      background: var(--c-h-gold);
+      box-shadow: 0 2px 10px rgba(163, 107, 79, 0.4);
+    }
+    .seg button[data-m="focus"][aria-pressed="true"] {
+      background: var(--c-sky-blue);
+      color: #002C5F;
+      box-shadow: 0 2px 10px rgba(170, 202, 230, 0.4);
+    }
+    .seg button[data-m=""][aria-pressed="true"] {
+      background: var(--text-dim);
+    }
+
+    .prefs {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .pf {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--line-subtle);
+      border-radius: 14px;
+      padding: clamp(8px, 1.2cqh, 12px) clamp(10px, 1.2cqw, 14px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+    .pf b {
+      display: block;
+      font-size: clamp(18px, 2.2cqw, 26px);
+      font-weight: 800;
+      font-feature-settings: "tnum";
+      letter-spacing: -0.04em;
+      color: var(--text-main);
+    }
+    .pf span {
+      font-size: clamp(11px, 1.1cqw, 13px);
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .lc {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .lc svg {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+    .lc .cap {
+      display: flex;
+      gap: 14px;
+      font-size: clamp(11px, 1.1cqw, 13px);
+      color: var(--text-dim);
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+    .lc .cap i {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: -0.1em;
+    }
+
+    .fix {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: clamp(12px, 1.25cqw, 15px);
+      color: var(--text-dim);
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+    .fix b {
+      font-size: clamp(16px, 1.8cqw, 21px);
+      color: var(--text-main);
+      font-weight: 800;
+      font-feature-settings: "tnum";
+    }
+    .fix b.ok { color: var(--c-act-blue); }
+
+    .mini2 {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .mini2 .tile {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: clamp(10px, 1.4cqh, 14px) clamp(12px, 1.2cqw, 16px);
+      border-radius: 16px;
+    }
+    .mini2 .big {
+      font-size: clamp(14px, 1.5cqw, 18px);
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+    .mini2 .small {
+      font-size: clamp(11px, 1.05cqw, 13px);
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex: none;
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+    }
+    .legend {
+      display: flex;
+      gap: 16px;
+      font-size: clamp(11px, 1.05cqw, 13px);
+      color: var(--text-dim);
+      align-items: center;
+      padding-top: 2px;
+      flex-shrink: 0;
+    }
+    .legend i {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 3px;
+      margin-right: 4px;
+      vertical-align: -0.1em;
+    }
+
+    /* 손님 판정 */
+    .why {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .why div {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-soft);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: clamp(12px, 1.2cqw, 14px);
+    }
+    .why i {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-style: normal;
+      font-weight: 800;
+      font-size: 12px;
+      color: #fff;
+      background: var(--c-h-gold);
+    }
+    .why i.no { background: var(--text-dim); }
+    .why span {
+      color: var(--text-dim);
+      font-size: 12px;
+      margin-left: auto;
+      text-align: right;
+    }
+    .acts {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+    }
+    .acts .btn { flex: 1; }
+    .btn {
+      font: inherit;
+      font-weight: 700;
+      font-size: clamp(13px, 1.3cqw, 16px);
+      border: 0;
+      border-radius: 12px;
+      padding: 9px 14px;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn.line {
+      background: none;
+      color: var(--text-main);
+      border: 1.5px solid var(--line-subtle);
+    }
+    .btn.gold {
+      background: var(--c-h-gold);
+      box-shadow: 0 4px 12px rgba(163, 107, 79, 0.3);
+    }
+    .btn.sm {
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+    .btn.warn {
+      background: var(--c-act-red);
+      box-shadow: 0 4px 12px rgba(230, 51, 18, 0.3);
+    }
+    .btn.ok { background: var(--c-act-blue); }
+    .verdict {
+      font-size: clamp(12px, 1.2cqw, 14px);
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    /* -------------------------------------------------------------
+       평소의 나 탭 (4축 그래프 & 알림)
+    ------------------------------------------------------------- */
+    .base {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1.5cqh, 16px);
+      min-height: 0;
+      height: 100%;
+    }
+    .brow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .who {
+      font-size: clamp(16px, 1.8cqw, 21px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .chip {
+      white-space: nowrap;
+      font: inherit;
+      font-size: clamp(12px, 1.2cqw, 15px);
+      font-weight: 700;
+      border: 1.5px solid var(--line-subtle);
+      color: var(--text-main);
+      background: var(--bg-soft);
+      border-radius: 999px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .chip[aria-pressed="true"] {
+      background: var(--c-act-blue);
+      color: #fff;
+      border-color: var(--c-act-blue);
+    }
+    [data-theme="light-sand"] .chip[aria-pressed="true"] {
+      background: var(--c-h-blue);
+      border-color: var(--c-h-blue);
+    }
+
+    .axes {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: clamp(8px, 1.2cqw, 14px);
+      min-height: 0;
+    }
+    .ax {
+      background: var(--bg-panel);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border-radius: 18px;
+      border: 1.5px solid var(--line-subtle);
+      padding: clamp(12px, 1.6cqh, 18px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    }
+    .ax.changed {
+      border-color: var(--c-h-gold);
+      background: radial-gradient(circle at 50% 0%, rgba(163, 107, 79, 0.25) 0%, var(--bg-panel) 100%);
+    }
+    .ax .n {
+      font-size: clamp(16px, 1.8cqw, 22px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+    }
+    .ax svg {
+      width: 100%;
+      height: clamp(36px, 5cqh, 50px);
+    }
+    .ax .st {
+      font-size: clamp(17px, 2cqw, 24px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      font-feature-settings: "tnum";
+    }
+    .ax .q {
+      font-size: clamp(11px, 1.05cqw, 13px);
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .lower {
+      flex: 1.2;
+      display: flex;
+      gap: clamp(8px, 1.2cqw, 14px);
+      min-height: 0;
+    }
+    .alert {
+      flex: 2;
+      border-radius: 18px;
+      border: 1.5px solid var(--line-subtle);
+      background: var(--bg-panel);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      padding: clamp(12px, 1.6cqh, 18px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(6px, 1cqh, 10px);
+    }
+    .alert.sent {
+      border-color: var(--c-h-gold);
+      background: radial-gradient(circle at 10% 50%, rgba(163, 107, 79, 0.22) 0%, var(--bg-panel) 90%);
+    }
+    .alert.calm {
+      border-color: var(--c-act-blue);
+      background: radial-gradient(circle at 10% 50%, rgba(0, 170, 210, 0.16) 0%, var(--bg-panel) 90%);
+    }
+    .alert .h {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: clamp(16px, 1.8cqw, 22px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+    }
+    .alert svg {
+      width: clamp(26px, 3cqw, 34px);
+      height: clamp(26px, 3cqw, 34px);
+      flex: none;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tg {
+      font-size: clamp(11px, 1.15cqw, 13px);
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    .tg.w {
+      color: #fff;
+      background: var(--c-h-gold);
+    }
+    .tg.c {
+      color: #fff;
+      background: var(--c-act-blue);
+    }
+    .opts.big { flex: 1; margin-top: 4px; }
+    .opts.big button { font-size: clamp(14px, 1.6cqw, 19px); font-weight: 800; border-radius: 14px; }
+    .msgs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+    .msg { display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.2cqw, 15px); line-height: 1.3; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .msg .tg { flex: none; font-size: 11px; padding: 3px 8px; }
+    .msg.dim { color: var(--text-dim); }
+    .alert .f {
+      font-size: clamp(11px, 1.1cqw, 13px);
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .trend {
+      flex: 1;
+      background: var(--bg-panel);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border-radius: 18px;
+      border: 1.5px solid var(--line-subtle);
+      padding: clamp(12px, 1.6cqh, 18px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(6px, 1cqh, 10px);
+    }
+    .trend .t {
+      font-size: clamp(14px, 1.45cqw, 18px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .trend .v {
+      font-size: clamp(15px, 1.7cqw, 21px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .trend svg {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+
+    .opts {
+      display: flex;
+      gap: 6px;
+      margin-top: auto;
+    }
+    .opts button {
+      flex: 1;
+      font: inherit;
+      font-size: clamp(12px, 1.2cqw, 14px);
+      font-weight: 700;
+      color: var(--text-main);
+      background: var(--bg-card);
+      border: 1.5px solid var(--line-subtle);
+      border-radius: 10px;
+      padding: 7px 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .opts button[aria-pressed="true"] {
+      background: var(--c-act-blue);
+      color: #fff;
+      border-color: var(--c-act-blue);
+    }
+    [data-theme="light-sand"] .opts button[aria-pressed="true"] {
+      background: var(--c-h-blue);
+      border-color: var(--c-h-blue);
+    }
+
+    .rulebox {
+      font-size: clamp(11px, 1.1cqw, 13px);
+      color: var(--text-dim);
+      background: var(--bg-soft);
+      border: 1px solid var(--line-subtle);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-weight: 600;
+    }
+
+    /* -------------------------------------------------------------
+       시나리오 선택 그리드
+    ------------------------------------------------------------- */
+    .pick {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: clamp(10px, 1.5cqw, 18px);
+      min-height: 0;
+    }
+    .card {
+      background: var(--bg-panel);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1.5px solid var(--line-subtle);
+      border-radius: 20px;
+      padding: clamp(12px, 1.8cqh, 18px);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      text-align: left;
+      color: inherit;
+      font: inherit;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+    .card:hover {
+      border-color: var(--c-act-blue);
+      transform: translateY(-4px);
+      box-shadow: 0 14px 34px rgba(0, 170, 210, 0.22);
+    }
+    .card:active { transform: scale(0.98); }
+    .mini {
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .mini .car {
+      max-width: 100%;
+      max-height: 100%;
+      height: 100%;
+      width: 100%;
+      border-width: 1.5px;
+      border-radius: 36px 36px 20px 20px;
+      padding: 14px 10px 10px;
+      gap: 6px;
+    }
+    .mini .row { gap: 6px; }
+    .mini .seat {
+      border-radius: 10px;
+      padding: 2px;
+      justify-content: center;
+      cursor: inherit;
+    }
+    .mini .seat svg {
+      width: clamp(26px, 3.4cqw, 42px);
+      height: clamp(26px, 3.4cqw, 42px);
+    }
+    .card .n {
+      font-size: clamp(15px, 1.8cqw, 22px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+    }
+    .card .k {
+      font-size: clamp(12px, 1.2cqw, 14px);
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+    .card .p {
+      font-size: clamp(12px, 1.25cqw, 15px);
+      color: var(--c-act-blue);
+      font-weight: 700;
+    }
+    .q2 {
+      font-size: clamp(14px, 1.5cqw, 18px);
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    /* -------------------------------------------------------------
+       주행 모드 뷰
+    ------------------------------------------------------------- */
+    .dgrid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(12px, 1.8cqw, 24px);
+    }
+    .big3 {
+      border-radius: 22px;
+      border: 1.5px solid var(--line-subtle);
+      background: var(--bg-panel);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      padding: clamp(14px, 2cqh, 24px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.3);
+    }
+    .big3 b {
+      font-size: clamp(24px, 3.2cqw, 38px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+    .big3 span {
+      font-size: clamp(15px, 1.8cqw, 22px);
+      color: var(--text-dim);
+      font-weight: 700;
+    }
+
+    /* 휴대폰 팝업 */
+    .phone {
+      position: absolute;
+      right: 2.5%;
+      top: 6%;
+      width: clamp(260px, 25cqw, 320px);
+      max-height: 86%;
+      background: #10141a;
+      color: #F6F3F2;
+      border-radius: 24px;
+      border: 2px solid var(--line-subtle);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.85);
+      overflow-y: auto;
+      padding: 18px 16px;
+      font-size: 13px;
+      z-index: 100;
+    }
+    [data-theme="light-sand"] .phone {
+      background: #F4F6F8;
+      color: #15202B;
+    }
+    .phone h4 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .phone .m {
+      color: var(--text-dim);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .phone .c {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--line-subtle);
+      border-left: 4px solid var(--c-h-gold);
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    [data-theme="light-sand"] .phone .c { background: #fff; }
+    .phone .x {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: none;
+      border: 0;
+      font-size: 18px;
+      cursor: pointer;
+      color: var(--text-dim);
+    }
+    .phone svg {
+      width: 100%;
+      height: 44px;
+      display: block;
+      margin-top: 4px;
+    }
+
+    /* 앱 웹뷰 환경 전용 */
+    .app body {
+      padding: 0;
+      background: var(--bg-core);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .app .wrap {
+      max-width: none;
+      width: 100vw;
+      height: 100vh;
+      gap: 0;
+    }
+    .app .top-bar { display: none; }
+    .app .screen {
+      height: 100vh;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .livefix {
+      font-size: 13px;
+      color: var(--c-act-blue);
+      font-weight: 700;
+    }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top-bar">
+    <div class="top-titles">
+      <h1>시트룸 차 화면</h1>
+      <p>Pleos Connect AVN 최적화 (균형 조절 반응형 뷰포트) · 가독성 강화 폰트</p>
+    </div>
+    <div class="top-actions" role="group" aria-label="기어 및 컨트롤">
+      <button class="ctl-btn" id="gearP" aria-pressed="true">기어 P</button>
+      <button class="ctl-btn" id="gearD" aria-pressed="false">기어 D</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen">
+    <!-- 시나리오 선택 뷰 -->
+    <section class="in" id="vPick">
+      <div class="hd">
+        <span class="brand">시트룸</span>
+        <span class="q2">어떤 집의 차인가요?</span>
+        <span class="sp"></span>
+        <button class="pill" data-theme-btn aria-label="밝게/어둡게">테마 전환 ◐</button>
+      </div>
+      <div class="pick" id="pick"></div>
+    </section>
+
+    <!-- 메인 대시보드 뷰 -->
+    <section class="in" id="vMain" hidden>
+      <div class="hd">
+        <span class="brand">시트룸</span>
+        <span class="tag">좌석마다 나만의 방</span>
+        <span class="live-badge" id="liveTag">차량 연결됨</span>
+        <span class="sp"></span>
+        <button class="pill" id="sendReport">
+          <svg viewBox="0 0 12 20" width="10" height="16">
+            <rect x="1.5" y="1.5" width="9" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>
+            <circle cx="6" cy="15.5" r="1.2" fill="currentColor"/>
+          </svg>
+          <span id="reportLbl">보고서</span>
+        </button>
+        <button class="pill" data-theme-btn aria-label="밝게/어둡게">테마 ◐</button>
+        <button class="pill cool" id="scnBtn">시나리오 변경</button>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="rooms">방</button>
+        <button role="tab" aria-selected="false" data-tab="me">평소의 나</button>
+      </div>
+
+      <!-- 좌석 룸 제어 탭 -->
+      <div class="view" id="tRooms">
+        <div class="carbox">
+          <div class="car" id="car"></div>
+        </div>
+        <div class="side">
+          <div class="tile learn" id="learn"></div>
+          <div class="mini2">
+            <div class="tile">
+              <span class="dot" id="airDot" style="color:var(--st-ok)"></span>
+              <div>
+                <div class="big" id="airWord">공기 좋음</div>
+                <div class="small" id="airPpm"></div>
+              </div>
+              <span class="sp"></span>
+              <button class="pill" id="recirc">내기</button>
+              <button class="btn warn sm" id="fresh" hidden>외기로</button>
+            </div>
+            <div class="tile">
+              <span class="dot" id="restDot" style="color:var(--st-ok)"></span>
+              <div>
+                <div class="big" id="restBig">평소대로</div>
+                <div class="small" id="restSmall">운전석 상태</div>
+              </div>
+              <span class="sp"></span>
+              <button class="pill" id="restBtn">졸음 테스트</button>
+            </div>
+          </div>
+          <div class="legend">
+            <span><i style="background:var(--st-drive)"></i>운전 · 시원</span>
+            <span><i style="background:var(--c-h-gold)"></i>휴식 · 따뜻</span>
+            <span><i style="background:var(--st-focus)"></i>집중 · 밝게</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 평소의 나 탭 -->
+      <div class="view" id="tMe" hidden>
+        <div class="base">
+          <div class="brow">
+            <span id="whoBox"></span>
+            <span class="sp"></span>
+            <span class="rulebox" id="ruleBox"></span>
+          </div>
+          <div class="axes" id="axes"></div>
+          <div class="lower">
+            <div class="alert" id="alert"></div>
+            <div class="trend" id="trend"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 모바일 리포트 모달 -->
+      <div class="phone" id="phone" hidden aria-label="휴대폰 보고서 미리보기"></div>
+    </section>
+
+    <!-- 주행 중 뷰 (기어 D) -->
+    <section class="in" id="vDrive" hidden>
+      <div class="hd">
+        <span class="brand">시트룸</span>
+        <span class="q2">주행 중 안전 화면</span>
+      </div>
+      <div class="dgrid" id="drive"></div>
+      <button class="btn warn" id="freshD" hidden style="font-size:20px;padding:16px">외기로 환기</button>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SEATS = [["DRIVER","운전석"],["PASSENGER","동승석"],["REAR_LEFT","뒷좌석 왼쪽"],["REAR_RIGHT","뒷좌석 오른쪽"]];
+const AX = [
+  {k:"perf",n:"수행",q:"조향 방향 전환(분당)",u:"회/분",min:.8},
+  {k:"pos",n:"자세",q:"주행 중 자세 고침",u:"회",min:1.2},
+  {k:"vis",n:"시야 보상",q:"수동 상향등 시간",u:"분",min:.5},
+  {k:"plan",n:"계획",q:"깜빡이 → 조향 간격",u:"초",min:.4},
+];
+
+const SC = [
+  {id:"S1",title:"10만 km 넘은 안전운전자",kind:"가족",pitch:"아이는 자고, 알림은 꼭 필요할 때만",
+   occ:["DRIVER","PASSENGER","REAR_LEFT","REAR_RIGHT"],modes:{DRIVER:"drive",REAR_LEFT:"rest",REAR_RIGHT:"rest"},
+   owners:{DRIVER:[{name:"아빠",n:126,t:21.5,fan:3,hv:"통풍 1"}],PASSENGER:[{name:"엄마",n:84,t:23.5,fan:2,hv:"열선 1"}],
+     REAR_LEFT:[{name:"첫째",n:61,t:22,fan:2,hv:"없음"}],REAR_RIGHT:[{name:"둘째",n:7,t:23,fan:1,hv:"열선 1"}]},
+   people:[{name:"아빠",b:{perf:[10.5,.6],pos:[.6,.7],vis:[.2,.35],plan:[3.4,.25]}}],rule:{z:2,min:2,trend:false,heat:0}},
+  {id:"S2",title:"고령 운전자",kind:"개인",pitch:"작은 변화와 몇 주 추세까지",
+   occ:["DRIVER"],modes:{DRIVER:"drive"},
+   owners:{DRIVER:[{name:"어르신",n:92,t:24.5,fan:1,hv:"열선 2"}],},seen:{PASSENGER:3},
+   people:[{name:"어르신",b:{perf:[13,1.4],pos:[1.5,1.2],vis:[.9,1.1],plan:[3.0,.45]}}],rule:{z:2.3,min:1,trend:true,heat:.19}},
+  {id:"S3",title:"2인, 번갈아 운전",kind:"가족",pitch:"누가 운전했는지 자리로 구분",
+   occ:["DRIVER","PASSENGER"],modes:{DRIVER:"drive"},
+   owners:{DRIVER:[{name:"지수",n:68,t:22.5,fan:2,hv:"열선 1"},{name:"민호",n:55,t:20.5,fan:3,hv:"통풍 2"}],
+     PASSENGER:[{name:"민호",n:61,t:21,fan:3,hv:"없음"},{name:"지수",n:49,t:23,fan:2,hv:"열선 1"}]},
+   people:[{name:"지수",share:.55,b:{perf:[9.5,.9],pos:[.8,.9],vis:[.3,.4],plan:[3.2,.5]}},{name:"민호",share:.45,b:{perf:[15,1.1],pos:[2,1.4],vis:[.4,.6],plan:[2.4,.5]}}],rule:{z:2,min:1,trend:false,heat:0},auto:true},
+  {id:"S4",title:"혼자 출퇴근, 오늘은 동승",kind:"개인",pitch:"빈자리에 탄 사람이 손님인지",
+   occ:["DRIVER","PASSENGER"],modes:{DRIVER:"drive"},guestAt:["PASSENGER"],seen:{PASSENGER:2,REAR_LEFT:1},
+   owners:{DRIVER:[{name:"서연",n:143,t:22,fan:2,hv:"없음"}]},
+   people:[{name:"서연",b:{perf:[11,.8],pos:[.9,.8],vis:[.3,.4],plan:[3.1,.35]}}],rule:{z:2,min:1,trend:false,heat:0}},
+];
+
+const MODES = {
+  drive: ["운전", -0.5, "바람 유지 · 밝기 유지"],
+  rest:  ["휴식", +1.5, "바람 1단 · 조명 10%"],
+  focus: ["집중", 0,    "바람 1단 · 조명 80%"],
+  "":    ["기본", 0,    ""]
+};
+
+const READY = 10;
+let sc=null, modes={}, who=0, tab="rooms", ppm=430, recirc=false, restUntil=0, last=null, sent=null, driving=false, sel="DRIVER", ownerIx={}, guests={}, trendMode={};
+
+// 테마 토글 핸들러
+let isLight = false;
+try { isLight = localStorage.getItem("seatroom.theme") === "light"; } catch(e) {}
+function applyTheme(){
+  if(isLight) document.documentElement.setAttribute("data-theme", "light-sand");
+  else document.documentElement.removeAttribute("data-theme");
+}
+applyTheme();
+document.querySelectorAll("[data-theme-btn]").forEach(b => b.onclick = () => {
+  isLight = !isLight; applyTheme();
+  try { localStorage.setItem("seatroom.theme", isLight ? "light" : "dark"); } catch(e) {}
+});
+
+function person(filled, color, learn) {
+  const ring = learn == null ? "" :
+    `<circle cx="28" cy="28" r="26" fill="none" stroke="var(--line-subtle)" stroke-width="3"/>
+     <circle cx="28" cy="28" r="26" fill="none" stroke="${learn >= 1 ? "var(--c-act-blue)" : "var(--text-dim)"}" stroke-width="3" pathLength="100" stroke-dasharray="${Math.round(learn*100)} 100" transform="rotate(-90 28 28)" stroke-linecap="round"/>`;
+  return filled
+    ? `<svg viewBox="0 0 56 56" aria-hidden="true">${ring}<circle cx="28" cy="19" r="7.5" fill="${color}"/><rect x="15" y="29" width="26" height="16" rx="8" fill="${color}"/></svg>`
+    : `<svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="19" r="7.5" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-dasharray="3.5 3.5"/><rect x="15" y="29" width="26" height="16" rx="8" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-dasharray="3.5 3.5"/></svg>`;
+}
+
+const colorOf = m => m === "rest" ? "#A36B4F" : m === "drive" ? "#00AAD2" : m === "focus" ? "#AACAE6" : "#8b8580";
+const word = (m, occ) => occ ? MODES[m || ""][0] : "빈자리";
+
+function board(k){
+  if(!sc.occ.includes(k)) sc.occ.push(k);
+  const o = sc.owners[k] && sc.owners[k][0];
+  if(o && o.n >= READY) return;
+  const known = Object.values(sc.owners).flat();
+  const t = [26, 19.5, 25.5, 20].map(v => [v, Math.min(...known.map(p => Math.abs(p.t - v)))]).sort((a,b) => b[1] - a[1])[0][0];
+  const near = known.reduce((a,p) => Math.abs(p.t - t) < Math.abs(a.t - t) ? p : a);
+  guests[k] = {t, near, move: 9, seen: (sc.seen && sc.seen[k]) || 0, status: "judged"};
+  ppm += 40;
+}
+
+const isGuest = k => guests[k] && guests[k].status !== "family";
+const ownerOf = k => { const o = sc.owners[k]; return o ? o[ownerIx[k] || 0] : null; };
+const fanOf = (k, m) => m === "rest" || m === "focus" ? 1 : ((isGuest(k) ? null : ownerOf(k))?.fan ?? 2);
+const tempOf = (k, m) => { const o = isGuest(k) ? null : ownerOf(k); return (o ? o.t : 22) + MODES[m || ""][1]; };
+
+function carHTML(s, mini){
+  const rows = [[0,1],[2,3]].map(r => `<div class="row">${r.map(i => {
+    const [k, l] = SEATS[i], m = (mini ? s.modes[k] : modes[k]) || "", occ = s.occ.includes(k);
+    if(mini) return `<div class="seat ${m}">${person(occ, colorOf(m))}</div>`;
+    const o = ownerOf(k), g = isGuest(k);
+    const who = g ? (guests[k].status === "guest" ? "손님" : "손님?") : (o && occ ? o.name : "&nbsp;");
+    return `<button class="seat ${m} ${sel === k ? "sel" : ""}" data-seat="${k}" aria-pressed="${sel === k}" aria-label="${l} ${g ? "손님" : o ? o.name : ""} ${word(m, occ)}">
+      <span class="lb">${l}</span>
+      <span class="ow" ${g ? 'style="color:var(--c-h-gold)"' : ""}>${who}</span>
+      ${person(occ, colorOf(m), o && occ ? Math.min(1, o.n / READY) : null)}
+      <span class="md">${word(m, occ)}</span>
+      <span class="tp">${occ ? tempOf(k, m).toFixed(1) + "°" : "&nbsp;"}</span>
+    </button>`;
+  }).join("")}</div>`).join("");
+  return (mini ? "" : `<div class="front">앞</div>`) + rows + (mini ? "" : `<div class="hint">고리 = 맞춤 학습 진행도</div>`);
+}
+
+function renderPick(){
+  $("pick").innerHTML = SC.map((s, i) => `<button class="card" data-i="${i}">
+    <div class="mini"><div class="car">${carHTML(s, true)}</div></div>
+    <div class="n">${s.title}</div>
+    <div class="k">${s.kind} 환경</div>
+    <div class="p">${s.pitch}</div>
+  </button>`).join("");
+  $("pick").querySelectorAll(".card").forEach(b => b.onclick = () => choose(+b.dataset.i));
+}
+
+function choose(i){
+  sc = {...SC[i], occ:[...SC[i].occ], owners:{...SC[i].owners}};
+  modes = {...sc.modes}; who = 0; sel = "DRIVER"; ownerIx = {}; guests = {}; last = null;
+  (sc.guestAt || []).forEach(k => { board(k); sel = k; });
+  sent = null; tab = "rooms";
+  ppm = 420 + sc.occ.length * 40; recirc = false; restUntil = 0;
+  $("scnBtn").textContent = `시나리오 ${i+1}`;
+  $("reportLbl").textContent = "보고서";
+  $("phone").hidden = true;
+  show();
+}
+
+function show(){
+  $("vPick").hidden = !!sc || driving;
+  $("vMain").hidden = !sc || driving;
+  $("vDrive").hidden = !driving;
+  if(driving){ renderDrive(); return; }
+  if(!sc){ renderPick(); return; }
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  $("tRooms").hidden = tab !== "rooms";
+  $("tMe").hidden = tab !== "me";
+  renderRooms();
+  renderMe();
+}
+
+function renderRooms(){
+  $("car").innerHTML = carHTML(sc, false);
+  $("car").querySelectorAll(".seat").forEach(b => b.onclick = () => { sel = b.dataset.seat; renderRooms(); });
+  renderLearn();
+  renderAir();
+}
+
+function rng(str){
+  let h = 1779033703;
+  for(const c of str) h = Math.imul(h ^ c.charCodeAt(0), 3432918353);
+  return () => {
+    h = Math.imul(h ^ h >>> 16, 2246822507);
+    h = Math.imul(h ^ h >>> 13, 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+function history(o){
+  const r = rng(o.name + o.t), g = () => { let s = 0; for(let i = 0; i < 6; i++) s += r(); return s - 3; };
+  const out = [], seen = [];
+  for(let i = 0; i < o.n; i++){
+    const settled = Math.round((o.t + g() * 0.3) * 2) / 2;
+    const fan = r() < 0.12 ? o.fan + (r() < 0.5 ? -1 : 1) : o.fan;
+    const ready = i >= READY;
+    const learnedT = ready ? Math.round(seen.reduce((a,b) => a+b, 0) / seen.length * 2) / 2 : 22;
+    const fixes = Math.min(3, Math.abs(settled - learnedT) / 0.5) + (fan !== (ready ? o.fan : 2) ? 1 : 0) + ((ready || o.hv === "없음") ? 0 : 1);
+    out.push({fixes, ready});
+    seen.push(settled);
+  }
+  return out;
+}
+
+function renderLearn(){
+  const L = $("learn"), [, label] = SEATS.find(s => s[0] === sel), occ = sc.occ.includes(sel), o = ownerOf(sel), m = modes[sel] || "";
+  const opts = sel === "DRIVER" ? ["drive", "rest"] : ["", "rest", "focus"];
+  const seg = occ ? `<div class="seg" role="group" aria-label="방 모드">${opts.map(x => `<button data-m="${x}" aria-pressed="${m === x}">${MODES[x][0]}</button>`).join("")}</div>` : "";
+  const two = sc.owners[sel] && sc.owners[sel].length > 1
+    ? sc.owners[sel].map((p,i) => `<button class="chip" aria-pressed="${(ownerIx[sel]||0)===i}" data-o="${i}">${p.name}</button>`).join(" ") : "";
+  let body, title = o && occ ? o.name + "의 자리" : "빈자리";
+
+  if(occ && isGuest(sel)){
+    const g = guests[sel], c = [g.seen < READY/2, Math.abs(g.t - g.near.t) >= 1.5, g.move >= 6], score = c.filter(Boolean).length;
+    title = g.status === "guest" ? "손님 맞춤" : score >= 3 ? "손님 같아요" : score == 2 ? "손님일 수도" : "아는 사람 같아요";
+    const row = (ok, a, b) => `<div><i class="${ok ? "" : "no"}">${ok ? "✓" : "–"}</i>${a}${b ? `<span>${b}</span>` : ""}</div>`;
+    body = `
+      <div class="why">
+        ${row(c[0], `최근 30일 탑승 <b>&nbsp;${g.seen}회</b>`)}
+        ${row(c[1], `첫 설정 온도 <b>&nbsp;${g.t.toFixed(1)}°</b>`, `${g.near.name} 기준 ${g.near.t.toFixed(1)}°`)}
+        ${row(c[2], `좌석 위치 <b>&nbsp;${g.move}cm</b> 조정`)}
+      </div>
+      <div class="prefs">
+        <div class="pf"><b>${(22 + MODES[m][1]).toFixed(1)}°</b><span>기본값${m ? " + " + MODES[m][0] : ""}</span></div>
+        <div class="pf"><b>바람 ${m === "rest" || m === "focus" ? 1 : 2}단</b><span>기본 풍량</span></div>
+        <div class="pf"><b>미기록</b><span>가족 데이터에 안 섞음</span></div>
+      </div>
+      ${g.status === "guest"
+        ? `<div class="verdict">이번 주행에만 세팅을 유지하며, 내리면 기록은 지웁니다.</div>`
+        : `<div class="acts"><button class="btn gold" id="gYes">손님으로 유지</button><button class="btn line" id="gNo">새 가족으로 학습</button></div>`}`;
+  } else if(!occ || !o){
+    const seen = (sc.seen && sc.seen[sel]) || 0;
+    body = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-dim);font-size:clamp(13px, 1.3cqw, 16px);text-align:center;">
+      ${person(false)}
+      <div>${o ? `현재 비어 있음 · 주 사용자: <b style="color:var(--text-main)">${o.name}</b>` : `최근 30일간 탑승 적음 (${seen}회)`}</div>
+      ${!occ ? `<button class="btn line" id="boardBtn" style="margin-top:8px">가상 탑승 테스트</button>` : ""}
+    </div>`;
+  } else {
+    const h = history(o), ready = o.n >= READY, cur = o.t;
+    const W = 300, H = 84, px = 6, top = 10, maxF = 5, bw = (W - 2 * px) / Math.max(h.length, READY + 2);
+    const bars = h.map((d, i) => `<rect x="${(px + i * bw + bw * 0.15).toFixed(1)}" y="${(H - 6 - d.fixes / maxF * (H - 6 - top)).toFixed(1)}" width="${(bw * 0.7).toFixed(1)}" height="${(d.fixes / maxF * (H - 6 - top)).toFixed(1)}" rx="${Math.min(1.5, bw * 0.3).toFixed(1)}" fill="${d.ready ? "var(--c-act-blue)" : "var(--text-dim)"}"/>`).join("");
+    const xr = px + READY * bw;
+    const avg = a => a.reduce((s,d) => s + d.fixes, 0) / Math.max(1, a.length);
+    const early = avg(h.slice(0, READY)), late = avg(h.slice(-10));
+    const mode = MODES[m];
+    body = `
+      <div class="prefs">
+        <div class="pf"><b>${(cur + mode[1]).toFixed(1)}°</b><span>${mode[1] ? `배운 ${cur.toFixed(1)}° ${mode[1] > 0 ? "+" : ""}${mode[1]} (${mode[0]})` : (ready ? "맞춤 학습 온도" : "누적 평균 온도")}</span></div>
+        <div class="pf"><b>바람 ${m === "rest" || m === "focus" ? 1 : o.fan}단</b><span>${m === "rest" || m === "focus" ? mode[0] + " 모드" : "선호 세기"}</span></div>
+        <div class="pf"><b>${o.hv}</b><span>시트 프리셋</span></div>
+      </div>
+      <div class="lc">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="탑승 회차별 수동 재조정 횟수">
+          <line x1="${px}" x2="${W-px}" y1="${H-6}" y2="${H-6}" stroke="var(--line-subtle)"/>
+          ${bars}
+          <line x1="${xr}" x2="${xr}" y1="4" y2="${H-6}" stroke="var(--c-h-gold)" stroke-opacity=".7" stroke-dasharray="3 3"/>
+        </svg>
+        <div class="cap">
+          <span><i style="background:var(--text-dim)"></i>직접 고침</span>
+          <span><i style="background:var(--c-act-blue)"></i>자리가 먼저 맞춤</span>
+          <span class="sp"></span>
+          <span>총 ${o.n}회 탑승</span>
+        </div>
+      </div>
+      <div class="fix">${ready
+        ? `직접 고친 횟수: 초기 평균 <b>${early.toFixed(1)}회</b> → 최근 <b class="ok">${late.toFixed(1)}회</b>로 안정화`
+        : `<b style="color:var(--c-h-gold)">학습 진행 중 (${o.n}/${READY}회)</b> 데이터가 쌓이면 차량이 먼저 맞춰줍니다`}</div>
+      ${car && car.fixes && car.fixes[sel] != null ? `<div class="livefix">● 이번 주행 실시간 수동 조정: ${car.fixes[sel]}회</div>` : ""}`;
+  }
+
+  L.innerHTML = `<div class="lh"><div><div class="sl">${label}${sc.auto && two ? " · 자리 위치로 구분" : ""}</div><div class="nm">${title}</div></div>${two}<span class="sp"></span>${seg}</div>${body}`;
+  L.querySelectorAll(".seg button").forEach(b => b.onclick = () => { modes[sel] = b.dataset.m; toCar("setMode", sel, modes[sel], tempOf(sel, modes[sel]), fanOf(sel, modes[sel])); renderRooms(); });
+  if($("boardBtn")) $("boardBtn").onclick = () => { board(sel); renderRooms(); };
+  if($("gYes")) $("gYes").onclick = () => { guests[sel].status = "guest"; renderRooms(); };
+  if($("gNo")) $("gNo").onclick = () => { const g = guests[sel]; g.status = "family"; sc.owners[sel] = [{name:"새 가족", n:1, t:g.t, fan:2, hv:"없음"}]; renderRooms(); };
+  L.querySelectorAll(".chip").forEach(b => b.onclick = () => { ownerIx[sel] = +b.dataset.o; if(sc.auto){ const other = sel === "DRIVER" ? "PASSENGER" : "DRIVER"; ownerIx[other] = 1 - ownerIx[sel]; } renderRooms(); });
+}
+
+function renderAir(){
+  const high = ppm >= 1500;
+  $("airDot").style.color = high ? "var(--c-act-red)" : "var(--c-act-blue)";
+  $("airWord").textContent = high ? "공기 답답" : "공기 쾌적";
+  $("airPpm").textContent = `CO₂ ${Math.round(ppm).toLocaleString()} ppm · ${recirc ? "내기 순환" : "외기 유입"}`;
+  $("fresh").hidden = !(high && recirc);
+  $("recirc").hidden = high && recirc;
+  $("recirc").textContent = recirc ? "외기로" : "내기 켜기";
+  
+  const rest = Date.now() < restUntil;
+  $("restDot").style.color = rest ? "var(--c-h-gold)" : "var(--c-act-blue)";
+  $("restBig").textContent = rest ? "쉬어 가세요" : "평소대로";
+  $("restSmall").textContent = rest ? "피로 조작 패턴 감지" : "운전석 모니터링";
+}
+
+function gauss(){
+  let u = 0, v = 0;
+  while(!u) u = Math.random();
+  while(!v) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function renderMe(){
+  const people = sc.people;
+  $("whoBox").innerHTML = people.length > 1
+    ? people.map((p,i) => `<button class="chip" aria-pressed="${i===who}" data-i="${i}">${p.name}</button>`).join(" ")
+    : `<span class="who">${people[0].name}</span>`;
+  $("whoBox").querySelectorAll(".chip").forEach(b => b.onclick = () => { who = +b.dataset.i; last = null; sent = null; renderMe(); });
+  
+  const p = people[who];
+  $("axes").innerHTML = AX.map(a => {
+    const [m, sd0] = p.b[a.k], sd = Math.max(a.min, sd0), z = sc.rule.z;
+    const today = last ? last.v[a.k] : null;
+    const zz = today == null ? null : (today - m) / sd, ch = zz != null && Math.abs(zz) >= z;
+    const X = v => Math.max(4, Math.min(196, 100 + (v - m) / (4 * sd) * 96));
+    const col = today == null ? "var(--text-dim)" : ch ? "var(--c-h-gold)" : "var(--c-act-blue)";
+    return `<div class="ax ${ch ? "changed" : ""}"><div class="n">${a.n} 축</div>
+      <svg viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="4" y1="20" x2="196" y2="20" stroke="var(--line-subtle)" stroke-width="6" stroke-linecap="round"/>
+        <line x1="${X(m - z * sd)}" y1="20" x2="${X(m + z * sd)}" y2="20" stroke="var(--c-act-blue)" stroke-opacity=".35" stroke-width="12" stroke-linecap="round"/>
+        <line x1="100" y1="8" x2="100" y2="32" stroke="var(--text-dim)" stroke-width="2.5"/>
+        ${today == null ? "" : `<circle cx="${X(today)}" cy="20" r="7.5" fill="${col}"/>`}
+      </svg>
+      <div class="st" style="color:${col}">${today == null ? "—" : ch ? "평소와 다름" : "평소 범위"}</div>
+      <div class="q">${a.q}</div></div>`;
+  }).join("");
+
+  const al = $("alert");
+  const bell = f => `<svg viewBox="0 0 34 34" aria-hidden="true"><path d="M7 24.5C8.5 20.4 7.5 6 17 5.1 26.5 6 25.5 20.4 27 24.5Z" fill="${f ? "var(--c-h-gold)" : "none"}" stroke="${f ? "var(--c-h-gold)" : "var(--text-dim)"}" stroke-width="2.4"/><circle cx="17" cy="28.5" r="2.7" fill="${f ? "var(--c-h-gold)" : "var(--text-dim)"}"/></svg>`;
+  const opts = [["평소 패턴",0],["1축 변동",1],["복합 다축 변동",2]]
+    .map(([t,k]) => `<button data-k="${k}" aria-pressed="${last && last.kind === k}">${t}</button>`).join("");
+  
+  $("ruleBox").textContent = "알림 기준: " + ruleText();
+  
+  if(!last){
+    al.className = "alert";
+    al.innerHTML = `<div class="h">${bell(false)}오늘 운전은 어땠나요?</div><div class="opts big">${opts}</div>`;
+  } else {
+    const lines = advice(p, last.v).concat(last.heat ? [{n: "열 감각", text: HEAT_ADVICE}] : []);
+    const msgs = lines.length ? `<div class="msgs">${lines.map(l => `<div class="msg ${last.sent ? "" : "dim"}"><span class="tg w">${l.n}</span>${l.text}</div>`).join("")}</div>` : "";
+    const whoTag = sc.auto ? `<span class="tg c">${p.name} 인식됨</span>` : "";
+    const title = (last.kind === "live" ? "실제 주행 동기화 · " : "") + (last.sent ? "맞춤 케어 알림 전송" : last.changed.length ? "경미한 변동 · 알림 안 함" : "이상 없음 · 평소 범위 내");
+    const why = last.sent ? (last.changed.length >= sc.rule.min ? `${last.changed.length}개 축 동시 변동 (기준 ${sc.rule.min}개)` : "더위 무반응")
+      : last.changed.length ? `${last.changed.length}개 축 변동 < 기준 ${sc.rule.min}개 → 리포트에만 기록` : "";
+    al.className = "alert " + (last.sent ? "sent" : "calm");
+    al.innerHTML = `<div class="h">${bell(last.sent)}${title}${whoTag ? `<span class="tags">${whoTag}</span>` : ""}</div>${msgs}<div class="f">${why}</div><div class="opts">${opts}</div>`;
+  }
+  al.querySelectorAll(".opts button").forEach(b => b.onclick = () => simulate(+b.dataset.k));
+
+  const tr = $("trend"), tk = sc.id + p.name, tm = trendMode[tk] ?? (sc.rule.trend ? "drift" : "steady");
+  const wk = weekly(p, tm), ax = AX[3], [m, sd0] = p.b.plan, sd = Math.max(ax.min, sd0) * 0.5;
+  const lo = m - 4 * sd, hi = m + 2.2 * sd, W = 200, H = 60, X = i => 8 + i * (W - 16) / (wk.length - 1), Y = v => H - 4 - (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo) * (H - 8);
+  const drift = tm === "drift";
+  
+  tr.innerHTML = `<div class="t">중장기 추세 모니터링</div>
+    <div class="v" style="color:${drift ? "var(--c-h-gold)" : "var(--c-act-blue)"}">${drift ? "↘ 계획 축 간격 감소" : "8주간 일정한 패턴 유지"}</div>
+    ${drift ? `<div class="msg" style="margin-bottom:2px">깜빡이를 켜는 때가 몇 주째 조금씩 늦어져요</div>` : ""}
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 8주 계획 축 주별 평균">
+      <rect x="4" y="${Y(m + sd)}" width="${W - 8}" height="${Y(m - sd) - Y(m + sd)}" fill="var(--c-act-blue)" opacity=".15" rx="3"/>
+      <polyline points="${wk.map((v,i) => `${X(i)},${Y(v)}`).join(" ")}" fill="none" stroke="var(--text-dim)" stroke-width="1.8" vector-effect="non-scaling-stroke"/>
+      ${wk.map((v,i) => `<circle cx="${X(i)}" cy="${Y(v)}" r="2.8" fill="${i >= 4 && drift ? "var(--c-h-gold)" : "var(--text-dim)"}"/>`).join("")}
+    </svg>
+    <div style="color:var(--text-dim);font-size:11px">8주 데이터 (${drift ? (sc.rule.trend ? "알림 발송 대상" : "리포트 누적 기록") : "정상 범위 유지"})</div>
+    <div class="opts"><button data-t="steady" aria-pressed="${!drift}">변화 없음</button><button data-t="drift" aria-pressed="${drift}">서서히 변함</button></div>`;
+  tr.querySelectorAll(".opts button").forEach(b => b.onclick = () => { trendMode[tk] = b.dataset.t; if(b.dataset.t === "drift" && sc.rule.trend) toCar("notify", "trend", "몇 주째 조금씩 달라지고 있어요", "깜빡이를 켜는 때가 몇 주째 조금씩 늦어져요"); renderMe(); });
+}
+
+const ADVICE = {
+  perf: ["핸들을 자주 고쳐 잡았어요 · 피곤하면 쉬어 가세요", "핸들 조작이 적었어요 · 주의가 흐려지지 않게"],
+  pos:  ["자세를 자주 고쳤어요 · 허리·목을 살펴보세요", "자세를 거의 안 바꿨어요 · 오래 타면 쉬어 가세요"],
+  vis:  ["상향등을 오래 켰어요 · 밤길이 잘 안 보였나요?", "상향등을 덜 썼어요"],
+  plan: ["깜빡이 뒤 핸들까지 길었어요", "깜빡이를 늦게 켰어요 · 차선 바꿀 때 여유 있게"],
+};
+const HEAT_ADVICE = "더운데 공조를 안 바꿨어요 · 온도를 확인하세요";
+
+function advice(p, v){
+  return AX.filter(a => v[a.k] != null).map(a => {
+    const [m, sd0] = p.b[a.k], z = (v[a.k] - m) / Math.max(a.min, sd0);
+    return Math.abs(z) >= sc.rule.z ? {n: a.n, text: ADVICE[a.k][z > 0 ? 0 : 1]} : null;
+  }).filter(Boolean);
+}
+
+function weekly(p, mode){
+  const r = rng(p.name + mode), [m, sd0] = p.b.plan, sd = Math.max(0.4, sd0);
+  return Array.from({length: 8}, (_, i) => m + (r() - 0.5) * sd * 0.5 - (mode === "drift" && i >= 4 ? (i - 3) * sd * 0.45 : 0));
+}
+
+function ruleText(){
+  const r = sc.rule;
+  return (r.min > 1 ? `${r.min}개 축 이상` : `1개 축부터`) + (r.heat ? " · 더위 무반응" : "") + (r.trend ? " · 중장기 추세" : "");
+}
+
+function simulate(kind){
+  if(sc.auto){ who = Math.random() < sc.people[0].share ? 0 : 1; ownerIx = {DRIVER: who, PASSENGER: 1 - who}; }
+  const p = sc.people[who], v = {};
+  const shift = {perf: 3.4, pos: 4, vis: 4.5, plan: -3.4}, one = AX[Math.floor(Math.random() * 4)].k;
+  AX.forEach(a => {
+    const [m, sd0] = p.b[a.k], sd = Math.max(a.min, sd0), moved = kind === 2 || (kind === 1 && a.k === one);
+    v[a.k] = m + sd * (moved ? shift[a.k] + gauss() * 0.4 : gauss() * 0.6);
+    if(a.k !== "plan") v[a.k] = Math.max(0, v[a.k]);
+  });
+  const changed = AX.filter(a => { const [m, sd0] = p.b[a.k]; return Math.abs((v[a.k] - m) / Math.max(a.min, sd0)) >= sc.rule.z; }).map(a => a.n);
+  const heat = sc.rule.heat > 0 && kind === 2;
+  last = {kind, v, changed, heat, sent: changed.length >= sc.rule.min || heat};
+  if(last.sent) toCar("notify", "today", "오늘 운전이 평소와 조금 달랐어요", advice(p, v).map(l => l.text).concat(heat ? [HEAT_ADVICE] : []).join('\n'));
+  renderMe();
+}
+
+function renderDrive(){
+  if(sc && modes.DRIVER === "rest") modes.DRIVER = "drive";
+  const sleeping = sc ? Object.entries(modes).filter(([k,m]) => m === "rest" && k !== "DRIVER" && sc.occ.includes(k)).length : 0;
+  const high = ppm >= 1500, rest = Date.now() < restUntil;
+  const t = (c, b, s) => `<div class="big3" style="border-color:${c}"><b>${b}</b>${s ? `<span>${s}</span>` : ""}</div>`;
+  $("drive").innerHTML = t(sleeping ? "var(--c-h-gold)" : "var(--line-subtle)", sleeping ? `${sleeping}명 휴식 중` : "휴식 없음", sleeping ? "부드러운 주행 제어 중" : "")
+    + t(high ? "var(--c-act-red)" : "var(--c-act-blue)", high ? "실내 환기 필요" : "공기 쾌적", "")
+    + t(rest ? "var(--c-act-red)" : "var(--line-subtle)", rest ? "휴식 및 정차 권장" : "주행 컨디션 양호", "");
+  $("freshD").hidden = !(high && recirc);
+}
+
+function report(){
+  const p = sc.people[who];
+  const spark = Array.from({length: 24}, (_, i) => p.b.plan[0] + gauss() * p.b.plan[1] * 0.8 - ((trendMode[sc.id + p.name] ?? (sc.rule.trend ? "drift" : "steady")) === "drift" && i > 16 ? (i - 16) * 0.06 : 0));
+  const pts = spark.map((y, i) => `${4 + i * 8},${36 - (y - 1.5) * 12}`).join(" ");
+  $("phone").innerHTML = `<button class="x" aria-label="닫기">×</button>
+    <h4>시트룸 모바일 리포트</h4>
+    <div class="m">${sc.title}</div>
+    <div class="c"><b>${last ? (last.sent ? "맞춤 알림 발송됨" : "정상 주행 완료") : "당일 주행 기록 대기"}</b>
+      <div class="m">${last ? last.changed.concat(last.heat ? ["열 감각"] : []).join(" · ") || "평소 범위 유지" : ""}</div>
+    </div>
+    <div class="c" style="border-left-color:var(--c-act-blue)">
+      <b>${p.name} 운전자 · 계획 지표</b>
+      <svg viewBox="0 0 196 44"><rect x="4" y="10" width="188" height="18" fill="var(--c-act-blue)" opacity=".15"/><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      <div class="m">파란 밴드 = 최근 30일 평소 오차 범위</div>
+    </div>
+    <div class="c" style="border-left-color:var(--c-sky-blue)">
+      <b>좌석별 자동 학습 현황</b>
+      <div class="m">${Object.keys(sc.owners).filter(k => sc.occ.includes(k)).map(k => { const o = ownerOf(k); return `${o.name}: ${o.t}°C · 바람 ${o.fan}단 · ${o.hv}`; }).join("<br>")}</div>
+    </div>`;
+  $("phone").hidden = false;
+  $("phone").querySelector(".x").onclick = () => $("phone").hidden = true;
+  $("reportLbl").textContent = "전송 완료 " + new Date().toTimeString().slice(0, 5);
+}
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { tab = b.dataset.tab; show(); });
+$("scnBtn").onclick = () => { sc = null; show(); };
+
+const APP = !!window.Android;
+if(APP) document.documentElement.classList.add("app");
+function toCar(fn, ...a){ try{ if(APP && window.Android[fn]) window.Android[fn](...a.map(x => typeof x === "number" ? x : String(x))); } catch(e){} }
+let car = null, prevOcc = null, lastTripT = 0, liveKey = "";
+window.onCar = j => {
+  car = j;
+  $("liveTag").classList.add("on");
+  if(j.gear){ const d = !!(j.driving || j.restricted); if(d !== driving){ driving = d; show(); } }
+  if(!sc) return;
+  let redraw = false;
+  if(prevOcc){
+    SEATS.forEach(([k]) => {
+      const now = j.occ[k], was = prevOcc[k];
+      if(now == null || was == null || now === was) return;
+      if(now){ board(k); sel = k; } else { sc.occ = sc.occ.filter(x => x !== k); if(isGuest(k)) delete guests[k]; }
+      redraw = true;
+    });
+  }
+  prevOcc = {...j.occ};
+  if(j.recirc != null && j.recirc !== recirc){ recirc = j.recirc; }
+  if(j.restLeftMs > 0) restUntil = Date.now() + j.restLeftMs;
+  if(j.trip && j.trip.t !== lastTripT){
+    const first = lastTripT === 0; lastTripT = j.trip.t;
+    if(!first){
+      const p = sc.people[who], v = j.trip.v;
+      const changed = AX.filter(a => { if(v[a.k] == null) return false; const [m, sd0] = p.b[a.k]; return Math.abs((v[a.k] - m) / Math.max(a.min, sd0)) >= sc.rule.z; }).map(a => a.n);
+      last = {kind: "live", v, changed, heat: false, sent: changed.length >= sc.rule.min, minutes: j.trip.minutes};
+      if(last.sent) toCar("notify", "today", "오늘 운전이 평소와 조금 달랐어요", advice(p, v).map(l => l.text).join('\n'));
+      tab = "me"; redraw = true;
+    }
+  }
+  const k2 = JSON.stringify([j.fixes, j.recirc]);
+  if(k2 !== liveKey){ liveKey = k2; if(!redraw && !driving && tab === "rooms"){ renderLearn(); renderAir(); } }
+  if(redraw) show();
+};
+
+$("recirc").onclick = () => { recirc = !recirc; toCar("setRecirc", recirc); renderAir(); };
+$("fresh").onclick = $("freshD").onclick = () => { recirc = false; toCar("setRecirc", false); show(); };
+$("restBtn").onclick = () => { restUntil = Date.now() + 15 * 60000; renderAir(); };
+$("sendReport").onclick = () => { report(); toCar("sendReport"); };
+$("gearD").onclick = () => { if(!sc) choose(0); driving = true; $("gearD").setAttribute("aria-pressed", true); $("gearP").setAttribute("aria-pressed", false); show(); };
+$("gearP").onclick = () => { driving = false; $("gearP").setAttribute("aria-pressed", true); $("gearD").setAttribute("aria-pressed", false); show(); };
+
+setInterval(() => {
+  if(!sc) return;
+  const n = sc.occ.length;
+  ppm += recirc ? n * 16 : -(ppm - 420) * 0.15;
+  ppm = Math.max(420, Math.min(3000, ppm));
+  if(driving) renderDrive();
+  else if(tab === "rooms") renderAir();
+}, 1000);
+
+show();
+</script>
+</body>
+</html>

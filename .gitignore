@@ -1,0 +1,22 @@
+# Android / Gradle
+.gradle/
+.kotlin/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 이전 버전 빌드물 (로컬 보관만, 저장소에는 최신본만)
+seatroom-app/dist/archive/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 위에서 본 차 안 네 좌석: 왼쪽 위(운전석)는 시원한 색, 뒷줄은 따뜻한 색 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#4CB5D5" android:pathData="M36,34h16v18h-16z" />
+    <path android:fillColor="#C9D3DC" android:pathData="M56,34h16v18h-16z" />
+    <path android:fillColor="#E3A05B" android:pathData="M36,56h16v18h-16z" />
+    <path android:fillColor="#E3A05B" android:pathData="M56,56h16v18h-16z" />
+</vector>

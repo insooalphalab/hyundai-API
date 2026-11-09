@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 읽기 (Vehicle Service protectionLevel="normal") -->
+    <uses-permission android:name="pleos.car.permission.CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CAR_DOORS" />
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <uses-permission android:name="pleos.car.permission.CAR_POWERTRAIN" />
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
+    <uses-permission android:name="pleos.car.permission.CAR_WINDOWS" />
+    <uses-permission android:name="pleos.car.permission.READ_CAR_STEERING" />
+
+    <!-- 제어: 좌석별 수면·서재 구역 -->
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_LIGHTS" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_SEATS" />
+
+    <!-- 주행 중 화면이 가려져도 상태를 보고 알림으로 말하기 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SeatRoom">
+
+        <uses-library android:name="android.car" android:required="false" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 주행 중에는 "주행 중 보기"(큰 글씨, 알림만, 버튼 하나)로 줄여서 보여 준다 -->
+            <meta-data android:name="distractionOptimized" android:value="true" />
+        </activity>
+
+        <service
+            android:name=".CabinService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="차량 실내 상태(좌석·공조·운전 조작) 모니터링과 주행 중 안전 알림" />
+        </service>
+
+        <receiver
+            android:name=".FreshAirReceiver"
+            android:exported="false" />
+    </application>
+
+</manifest>
