@@ -1,0 +1,10 @@
+# 텍스트는 저장소에 LF로 저장한다 (Windows 작업 복사본의 CRLF 경고 방지)
+* text=auto eol=lf
+*.bat text eol=crlf
+
+# 바이너리
+*.apk binary
+*.jar binary
+*.webp binary
+*.png binary
+*.woff2 binary

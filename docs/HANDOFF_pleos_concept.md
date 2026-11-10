@@ -110,3 +110,5 @@
 - 2026-11-04: 앱 이름 **시트룸 — 좌석마다 나만의 방** 확정. 시각화 2차본(`시트룸_2차본.html`).
 - 2026-11-04: **첫 APK 빌드** `seatroom-app/dist/seatroom-0.1.0-debug.apk` (1단계 SDK 기능: 좌석별 침실·서재 모드, CO₂ 추정, 졸음 자구책, 평소의 나 4축, 승하차·열 감각·귀가 전 머무름·공조 다툼, JSONL 기록). 빌드 도구는 이 PC `%USERPROFILE%\dev`(JDK 17, Android SDK 35, Gradle 8.10.2), 에뮬레이터는 다른 PC. 사용법·제약: `seatroom-app/README.md`.
 - SDK 원본 확인으로 바뀐 사실: 브레이크 페달은 Boolean(눌림 여부), 가속 페달 없음, `Gear` API 있음(deprecated 표시), 좌석 위치 콜백 있음.
+- 2026-11-04~05: 0.1.0 → **0.9.0**까지 하루 반 동안 15회 빌드. 0.6.0에서 화면을 Compose → HTML(WebView) 하나로 바꿈. 0.7~0.9에 자리 학습(주인 10회 이상), 손님 판정(첫 설정 온도·좌석 이동·30일 탑승 횟수), 확신도, 함께 탄 사람 보고서 추가. 버전별 내용: `seatroom-app/README.md` "버전 이력".
+- 2026-11-09: 폴더 정리(`docs/`, `visuals/`, `simulations/`, `seatroom-app/`), 최상위 README 작성, GitHub 업로드 https://github.com/insooalphalab/hyundai-API . 이전 APK 14개는 `seatroom-app/dist/archive/`에 로컬 보관(git 제외).
