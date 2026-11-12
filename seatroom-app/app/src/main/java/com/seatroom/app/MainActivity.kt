@@ -8,7 +8,9 @@ import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.seatroom.app.vehicle.RoomMode
 import com.seatroom.app.vehicle.Seat
 import kotlinx.coroutines.delay
@@ -43,14 +45,17 @@ class MainActivity : ComponentActivity() {
         }
         setContentView(web)
 
+        // 화면이 보일 때만 넘긴다. 가려진 동안의 수집·판정·알림은 CabinService가 계속한다.
         lifecycleScope.launch {
             var sent = ""
-            while (true) {
-                delay(500)
-                val json = stateJson().toString()
-                if (json != sent) {
-                    sent = json
-                    web.evaluateJavascript("window.onCar && window.onCar($json)", null)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    delay(500)
+                    val json = stateJson().toString()
+                    if (json != sent) {
+                        sent = json
+                        web.evaluateJavascript("window.onCar && window.onCar($json)", null)
+                    }
                 }
             }
         }
@@ -73,7 +78,7 @@ class MainActivity : ComponentActivity() {
             put("problems", JSONArray(engine.car.problems.value))
             put("guest", perSeat { s ->
                 engine.guestSignals.value[s]?.let { g ->
-                    JSONObject().apply { put("firstTemp", g.firstTemp ?: JSONObject.NULL); put("moved", g.moved); put("seen30", g.seen30) }
+                    JSONObject().apply { put("firstTemp", g.firstTemp ?: JSONObject.NULL); put("moved", g.moved); put("movedBy", g.movedBy); put("seen30", g.seen30) }
                 }
             })
             engine.lastTrip.value?.let { t ->

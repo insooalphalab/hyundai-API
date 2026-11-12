@@ -26,8 +26,20 @@ class SignalLog(filesDir: File) {
         put("t", f.t); put("kind", f.kind.name); put("seat", f.seat); put("value", f.value); put("text", f.text)
     })
 
+    /** [keepDays]일보다 오래된 날짜 파일을 지운다(차 안 저장 공간이 끝없이 늘지 않게). 지운 파일 수를 돌려준다. */
+    @Synchronized
+    fun prune(now: Long, keepDays: Int = KEEP_DAYS): Int {
+        val cutoff = day.format(Date(now - keepDays * 86_400_000L))
+        return (dir.listFiles() ?: return 0).count { f ->
+            val d = f.name.substringBefore('.')
+            f.name.endsWith(".jsonl") && d.length == 10 && d < cutoff && f.delete()
+        }
+    }
+
     private fun append(kind: String, o: JSONObject) {
         val file = File(dir, "${day.format(Date(o.getLong("t")))}.$kind.jsonl")
         file.appendText(o.toString() + "\n")
     }
+
+    companion object { const val KEEP_DAYS = 30 }
 }

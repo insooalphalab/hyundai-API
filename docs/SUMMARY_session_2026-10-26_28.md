@@ -100,11 +100,13 @@
 5. 기준선 형성 기간·군집 규모 시뮬레이션
 
 ## 10. 파일 목록
+> 2026-11-09 폴더 정리 뒤의 위치 기준: 문서는 `docs/`, 시뮬레이션은 `simulations/`. 이 세션 이후의 진행(앱 구현)은 `HANDOFF_pleos_concept.md` 11.2절.
+
 | 파일 | 내용 |
 |---|---|
-| `HANDOFF_pleos_concept.md` | 인계 문서(판별 기준, 생성 규칙, 진행 상황). 다음 세션 시작: "HANDOFF 읽고 11번부터 이어서 하자" |
+| `HANDOFF_pleos_concept.md` | 인계 문서(판별 기준, 생성 규칙, 진행 상황). 다음 세션 시작: "HANDOFF 읽고 12번부터 이어서 하자" |
 | `CONCEPT_v3_integrated.md` | **현재 기준 개념**: 모듈, 사용 장면, 좌석별 환경, 확장 모듈, 근거, 안전 규칙, 선행, 필요 신호, 질문, 기각·보관 목록 |
 | `CONCEPT_baseline_me.md` | 평소의 나 상세 |
 | `NOTES_parking_microclimate.md` | 주차 미기후 조사, SDK 확인, 로거 구조, 에뮬레이터 주입 절차, 시뮬레이션 결과 |
-| `sim_cluster_recovery.py`, `sim_crossed_car.py` | 군집 복원·차량 효과 분리 시뮬레이션 (+ 결과 CSV) |
+| `../simulations/sim_cluster_recovery.py`, `sim_crossed_car.py` | 군집 복원·차량 효과 분리 시뮬레이션 (+ 결과 CSV) |
 | `SUMMARY_session_2026-10-26_28.md` | 이 문서 |

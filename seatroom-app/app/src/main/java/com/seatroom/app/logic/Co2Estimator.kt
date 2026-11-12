@@ -22,7 +22,23 @@ class Co2Estimator {
         return ppm
     }
 
+    private var alertedAt: Long? = null
+
+    /**
+     * 지금 알릴 차례인지. 내기 순환인 채로 [ALERT]를 넘으면 한 번, 그대로 높으면 [REPEAT_MS]마다 다시.
+     * [ALERT] 아래로 내려가면 처음부터 다시 센다.
+     */
+    fun alertDue(now: Long, recirculation: Boolean): Boolean {
+        if (ppm < ALERT) { alertedAt = null; return false }
+        if (!recirculation) return false
+        val last = alertedAt
+        if (last != null && now - last < REPEAT_MS) return false
+        alertedAt = now
+        return true
+    }
+
     companion object {
+        const val REPEAT_MS = 10 * 60_000L
         const val OUTDOOR = 420.0
         const val PER_PERSON = 1.2
         const val RECIRC_ACH = 6.0

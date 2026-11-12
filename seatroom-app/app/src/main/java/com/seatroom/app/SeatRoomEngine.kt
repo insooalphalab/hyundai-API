@@ -54,7 +54,8 @@ data class AxisBase(val mean: Double?, val sd: Double?, val n: Int)
 data class LiveTrip(val t: Long, val minutes: Double, val values: Map<String, Double?>, val base: Map<String, AxisBase>, val heat: Boolean)
 
 /** 손님 판정에 쓰는 실측값: 이번 탑승 뒤 처음 직접 맞춘 온도, 좌석을 옮겼는지, 이 탑승 전 30일 탑승 횟수. */
-data class GuestSignal(val firstTemp: Float? = null, val moved: Boolean = false, val seen30: Int = 0)
+/** [movedBy]: 앉았을 때 위치에서 가장 많이 옮긴 양(SDK 위치 값 단위). */
+data class GuestSignal(val firstTemp: Float? = null, val moved: Boolean = false, val seen30: Int = 0, val movedBy: Int = 0)
 
 /** 휴대폰으로 보낸 보고서(시뮬레이션: 차 안에 HTML 파일로 저장). */
 data class ReportInfo(val t: Long, val path: String, val pages: Int)
@@ -70,7 +71,7 @@ class SeatRoomEngine private constructor(private val app: Context) {
 
     val car = CarSignals(app)
     private val log = SignalLog(app.filesDir)
-    private val baseline = BaselineStore(app)
+    private val baseline = BaselineStore(File(app.filesDir, "baseline"), app.getSharedPreferences("baseline", Context.MODE_PRIVATE))
     private val co2 = Co2Estimator()
 
     private val _scenario = MutableStateFlow<Scenario?>(null)
@@ -133,6 +134,8 @@ class SeatRoomEngine private constructor(private val app: Context) {
     val guestSignals: StateFlow<Map<Seat, GuestSignal>> = _guestSignals
     private val boardedAt = mutableMapOf<Seat, Long>()
     private val lastPos = mutableMapOf<String, String?>()
+    /** 앉은 순간의 좌석 위치(항목 → 값). 그 뒤 얼마나 옮겼는지의 기준. */
+    private val posAtBoarding = mutableMapOf<Seat, MutableMap<String, Int>>()
     private val boardings = app.getSharedPreferences("boardings", Context.MODE_PRIVATE)
 
     private val _restUntil = MutableStateFlow(0L)
@@ -147,21 +150,25 @@ class SeatRoomEngine private constructor(private val app: Context) {
         },
         onTripEnd = { m ->
             val k = key(_profile.value)
-            baseline.record(k, m)
-            // 기록한 뒤 읽으면 마지막 = 이번 주행, 그 앞 = 평소. 가상 주행은 빼고 실제 주행만 기준선으로 쓴다.
-            val past = baseline.readings(k, threshold(), realOnly = true)
-            _lastTrip.value = LiveTrip(
-                m.end, m.minutes,
-                mapOf(
-                    "perf" to m.reversalsPerMin,
-                    "pos" to m.postureChanges.toDouble(),
-                    "vis" to m.highBeamManualMs / 60000.0,
-                    "plan" to m.medianTurnLead?.div(1000.0),
-                ),
-                past.associate { AXIS_KEY.getValue(it.axis) to AxisBase(it.baseline, it.sd, it.n) },
-                m.heatNoAction > 0,
-            )
-            refreshBaseline()
+            val th = threshold()
+            // 파일 쓰기·기준선 계산은 메인 스레드 밖에서(신호 처리가 밀리지 않게)
+            scope.launch(Dispatchers.IO) {
+                baseline.record(k, m)
+                // 기록한 뒤 읽으면 마지막 = 이번 주행, 그 앞 = 평소. 가상 주행은 빼고 실제 주행만 기준선으로 쓴다.
+                val past = baseline.readings(k, th, realOnly = true)
+                _lastTrip.value = LiveTrip(
+                    m.end, m.minutes,
+                    mapOf(
+                        "perf" to m.reversalsPerMin,
+                        "pos" to m.postureChanges.toDouble(),
+                        "vis" to m.highBeamManualMs / 60000.0,
+                        "plan" to m.medianTurnLead?.div(1000.0),
+                    ),
+                    past.associate { AXIS_KEY.getValue(it.axis) to AxisBase(it.baseline, it.sd, it.n) },
+                    m.heatNoAction > 0,
+                )
+                refreshBaseline()
+            }
             // 알림은 화면(HTML)이 시나리오의 알림 규칙으로 판정해 Android.notify로 보낸다(같은 주행을 두 번 알리지 않게)
         },
     )
@@ -171,6 +178,7 @@ class SeatRoomEngine private constructor(private val app: Context) {
 
     init {
         car.start()
+        scope.launch(Dispatchers.IO) { log.prune(System.currentTimeMillis()) }
         scope.launch {
             car.events.collect { s ->
                 val before = insights.restSuggestUntil
@@ -185,9 +193,8 @@ class SeatRoomEngine private constructor(private val app: Context) {
         scope.launch {
             while (true) {
                 delay(5_000)
-                val prev = _co2.value
                 _co2.value = co2.step(car.state.value, 5.0)
-                if (prev < Co2Estimator.ALERT && _co2.value >= Co2Estimator.ALERT && car.state.value.recirculation == true) notifier.co2(_co2.value)
+                if (co2.alertDue(System.currentTimeMillis(), car.state.value.recirculation == true)) notifier.co2(_co2.value)
             }
         }
     }
@@ -199,17 +206,24 @@ class SeatRoomEngine private constructor(private val app: Context) {
             if (s.value == "true") {
                 _fixes.update { it + (seat to 0) }
                 boardedAt[seat] = s.t
+                posAtBoarding[seat] = lastPos.filterKeys { it.startsWith("${seat.name}.") }
+                    .mapNotNull { (k, v) -> v?.toIntOrNull()?.let { k.substringAfter('.') to it } }.toMap().toMutableMap()
                 _guestSignals.update { it + (seat to GuestSignal(seen30 = boardingsIn30Days(seat, s.t))) }
                 if (!initial) logBoarding(seat, s.t)
-            } else boardedAt.remove(seat)
+            } else { boardedAt.remove(seat); posAtBoarding.remove(seat) }
             return
         }
         if (s.name in POSITION_SIGNALS) {
-            val prev = lastPos.put("${seat.name}.${s.name.substringAfter('.')}", s.value)
+            val item = s.name.substringAfter('.')
+            val prev = lastPos.put("${seat.name}.$item", s.value)
             val since = boardedAt[seat] ?: return
             // 앉은 직후 3초(시트 메모리 이동 등)와 앱 시작 직후는 빼고, 값이 바뀌면 "좌석을 옮김"
             if (!initial && s.t - since > 3_000 && prev != null && prev != s.value) {
-                _guestSignals.update { it + (seat to (it[seat] ?: GuestSignal()).copy(moved = true)) }
+                val now = s.value?.toIntOrNull()
+                // 기준: 앉은 순간의 값. 그때 값을 몰랐으면 바뀌기 직전 값을 기준으로 삼는다.
+                val from = posAtBoarding.getOrPut(seat) { mutableMapOf() }.let { m -> m[item] ?: prev.toIntOrNull()?.also { m[item] = it } }
+                val by = if (now != null && from != null) kotlin.math.abs(now - from) else 0
+                _guestSignals.update { it + (seat to (it[seat] ?: GuestSignal()).let { g -> g.copy(moved = true, movedBy = maxOf(g.movedBy, by)) }) }
             }
             return
         }
@@ -362,6 +376,8 @@ class SeatRoomEngine private constructor(private val app: Context) {
             val file = File(dir, "report-${data.createdAt}.html")
             file.writeText(ReportBuilder.html(data))
             File(dir, "latest.html").writeText(file.readText())
+            // 지난 보고서는 최근 것만 남긴다
+            dir.listFiles { f -> f.name.startsWith("report-") }?.sortedByDescending { it.name }?.drop(KEEP_REPORTS)?.forEach { it.delete() }
             _report.value = ReportInfo(data.createdAt, file.absolutePath, 2 + people.size)
             if (summaryTitle != null) notifier.message(Notifier.ID_REPORT, summaryTitle, summary.joinToString("\n")) else notifier.reportSent()
         }
@@ -455,6 +471,7 @@ class SeatRoomEngine private constructor(private val app: Context) {
         private val POSITION_SIGNALS = setOf("seat.foreAft", "seat.height", "posture.foreAft", "posture.height")
         private val AXIS_KEY = mapOf(Axis.PERFORMANCE to "perf", Axis.POSTURE to "pos", Axis.VISION to "vis", Axis.PLANNING to "plan")
         private const val DAYS_30 = 30L * 24 * 3600 * 1000
+        private const val KEEP_REPORTS = 20
 
         @Volatile private var instance: SeatRoomEngine? = null
         fun get(context: Context): SeatRoomEngine =

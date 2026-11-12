@@ -19,6 +19,7 @@
     <!-- 주행 중 화면이 가려져도 상태를 보고 알림으로 말하기 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
@@ -32,6 +33,8 @@
 
         <activity
             android:name=".MainActivity"
+            android:launchMode="singleTop"
+            android:configChanges="uiMode|orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -53,6 +56,15 @@
         <receiver
             android:name=".FreshAirReceiver"
             android:exported="false" />
+
+        <!-- 시동과 함께 수집 시작(앱을 열지 않아도 주행이 기록되게) -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

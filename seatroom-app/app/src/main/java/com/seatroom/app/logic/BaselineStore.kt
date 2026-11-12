@@ -1,8 +1,11 @@
 package com.seatroom.app.logic
 
-import android.content.Context
+import android.content.SharedPreferences
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.net.URLEncoder
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -52,10 +55,27 @@ data class TripSummary(val start: Long, val minutes: Double, val values: Map<Axi
 /**
  * 사람(프로필)별로 주행 요약을 쌓고, 지난 기록으로 평소의 나를 만든다.
  * 비교 대상은 항상 그 사람 자신의 지난 주행뿐(타인·나이 비교 없음).
+ *
+ * 저장: [dir] 아래 사람마다 JSON 파일 하나(0.9.2~). 그 전 버전이 SharedPreferences에 쌓은 기록([legacy])은
+ * 처음 읽을 때 파일로 옮긴다. 읽기는 메모리에 둔 사본으로 하고, 쓰기는 임시 파일에 쓴 뒤 이름을 바꿔
+ * 쓰는 도중 꺼져도 깨지지 않게 한다.
  */
-class BaselineStore(context: Context) {
-    private val prefs = context.getSharedPreferences("baseline", Context.MODE_PRIVATE)
+class BaselineStore(private val dir: File, private val legacy: SharedPreferences? = null) {
+    private val cache = ConcurrentHashMap<String, String>()
 
+    init { dir.mkdirs() }
+
+    private fun file(profile: String) = File(dir, URLEncoder.encode(profile, "UTF-8").replace("*", "%2A") + ".json")
+
+    private fun save(profile: String, json: String) {
+        val f = file(profile)
+        val tmp = File(dir, f.name + ".tmp")
+        tmp.writeText(json)
+        if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
+        cache[profile] = json
+    }
+
+    @Synchronized
     fun record(profile: String, m: TripMetrics, synthetic: Boolean = false) {
         val arr = load(profile)
         arr.put(JSONObject().apply {
@@ -74,11 +94,14 @@ class BaselineStore(context: Context) {
         })
         val trimmed = JSONArray()
         sorted(arr).takeLast(MAX_TRIPS).forEach { trimmed.put(it) }
-        prefs.edit().putString(profile, trimmed.toString()).apply()
+        save(profile, trimmed.toString())
     }
 
+    @Synchronized
     fun clear(profile: String) {
-        prefs.edit().remove(profile).apply()
+        file(profile).delete()
+        legacy?.edit()?.remove(profile)?.apply()
+        cache[profile] = "[]"
     }
 
     /** 최근 주행부터, 화면의 "주행 기록" 목록용. */
@@ -134,7 +157,19 @@ class BaselineStore(context: Context) {
         return t.map { it.getInt("foreAft") }.average() to t.map { it.getInt("height") }.average()
     }
 
-    private fun load(profile: String) = JSONArray(prefs.getString(profile, "[]"))
+    @Synchronized
+    private fun load(profile: String): JSONArray {
+        val json = cache[profile] ?: run {
+            val f = file(profile)
+            val old = legacy?.getString(profile, null)
+            when {
+                f.exists() -> f.readText().also { cache[profile] = it }
+                old != null -> old.also { save(profile, it); legacy?.edit()?.remove(profile)?.apply() }
+                else -> "[]".also { cache[profile] = it }
+            }
+        }
+        return try { JSONArray(json) } catch (e: Exception) { JSONArray() }
+    }
 
     /** 넣은 순서가 아니라 주행 시각 순. 가상 주행(과거 날짜)과 실제 주행이 섞여도 최근이 "오늘". */
     private fun sorted(arr: JSONArray) = (0 until arr.length()).map { arr.getJSONObject(it) }.sortedBy { it.optLong("start") }

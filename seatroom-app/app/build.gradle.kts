@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -13,13 +12,19 @@ android {
         applicationId = "com.seatroom.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.9.0"
+        versionCode = 18
+        versionName = "0.9.3"
     }
 
     buildTypes {
         release {
+            // 제출용 release. Pleos SDK가 내부에서 Dagger Hilt를 써서, 코드 축소(R8)는 에뮬레이터에서
+            // 확인하기 전까지 끈다(debug와 같은 코드로 동작). 켤 때는 proguard-rules.pro 규칙과 함께 확인할 것.
+            // 서명은 심사용 설치를 위해 디버그 키를 쓴다(스토어 배포 때는 실제 키로 바꿀 것).
             isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -29,9 +34,6 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
-    }
-    buildFeatures {
-        compose = true
     }
     packaging {
         resources {
@@ -45,13 +47,8 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.material3)
+    // 화면은 WebView 하나(0.6.0~)라 Compose는 쓰지 않는다
+    implementation(libs.androidx.activity.ktx)
 
     testImplementation("junit:junit:4.13.2")
 }

@@ -100,7 +100,13 @@ class Insights(private val onFinding: (Finding) -> Unit, private val onTripEnd: 
         when (sig.value) {
             "GEAR_DRIVE", "GEAR_REVERSE" -> {
                 parkedAt = null
-                if (trip == null) trip = TripMetrics(start = sig.t, seatForeAft = st.posture["foreAft"], seatHeight = st.posture["height"])
+                if (trip == null) {
+                    trip = TripMetrics(start = sig.t, seatForeAft = st.posture["foreAft"], seatHeight = st.posture["height"])
+                    // 지난 주행·주차 중의 상태가 이번 주행 지표에 섞이지 않게: 조향 방향 전환은 새로 세고,
+                    // 출발 전부터 켜져 있던 수동 상향등은 출발 시각부터만 센다
+                    steerDir = 0; steerExtreme = null; steerTurnAt = null
+                    if (highBeamManualSince != null) highBeamManualSince = sig.t
+                }
             }
             "GEAR_PARK" -> {
                 trip?.let { m ->
@@ -172,8 +178,10 @@ class Insights(private val onFinding: (Finding) -> Unit, private val onTripEnd: 
         val v = sig.value?.toIntOrNull() ?: return
         val prev = lastFan
         lastFan = v
-        lastActionAt[Seat.DRIVER] = sig.t
-        if (prev != null && v - prev >= 2 && st.driving && appInitiated[Seat.DRIVER]?.let { sig.t - it < 10_000 } != true) {
+        // 앱이 방 모드로 바꾼 바람은 사람의 조작이 아니다(더운데 조작 없음 판정을 가리지 않게)
+        val byApp = appInitiated[Seat.DRIVER]?.let { sig.t - it < 10_000 } == true
+        if (!byApp && prev != null && v != prev) lastActionAt[Seat.DRIVER] = sig.t
+        if (prev != null && v - prev >= 2 && st.driving && !byApp) {
             countermeasure(sig.t, "운전석 바람을 세게 함")
         }
     }
