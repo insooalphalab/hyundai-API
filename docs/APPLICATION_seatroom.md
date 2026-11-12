@@ -39,7 +39,7 @@
 
 ## 5. 개발 계획
 
-**현재 상태:** Pleos Connect 에뮬레이터용 APK 0.9.3 완성(Kotlin + WebView HTML 화면, 단위 테스트 통과, 에뮬레이터 확인은 0.9.0까지). Vehicle SDK 2.3.2 기준.
+**현재 상태:** Pleos Connect 에뮬레이터용 APK 0.9.3 완성(Kotlin + WebView HTML 화면, 단위 테스트 통과, 에뮬레이터 설치 확인). Vehicle SDK 2.3.2 기준.
 
 **읽기(Vehicle State):** Seat(점유, 위치, 열선·통풍), HVAC(좌석별 설정·실내 온도, 팬, 내기 순환), SteeringWheel(조향각), Light(상향등, 앰비언트), TurnSignal, Gear(D→P로 주행 1회 구분), Door, Window. 0.5초 주기로 수집해 날짜별 JSONL로 차 안에 저장(본인만 열람).
 
